@@ -57,69 +57,48 @@ class Node extends Parent {
     return p;
   }
 
-  Widget render(MainViewState state) {
-    return Listener(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-            color: Colors.red
-        ),
+  Widget render(Matrix4 m, ValueNotifier notifier) {
+    Matrix4 matrix = m.clone();
+    matrix.translate(position.dx, -position.dy);
+    return Transform(
+        transform: matrix,
         child: Container(
-          width: 100,
+          width: 125,
           height: 100,
-          child: Column(
-            children: <Widget>[
-              Text(title,
-                style: TextStyle(
-                    color: Colors.white,
-                    //fontSize: 15.0 / scale
-                    fontSize: 18.0
-                ),
-              ),
-              Expanded(
-                child: renderBody(state),
-              ),
-            ],
+          decoration: BoxDecoration(
+              color: Colors.red
           ),
-        ),
-      ),
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: (event) => {
-        state.setState(() => {
-          state.inZoomMode = false
-        })
-      },
-      onPointerUp: (event) => {
-        state.setState(() => {
-          state.inZoomMode = true
-        })
-      },
-      onPointerMove: (event) => {
-        state.setState(() => {
-          position += event.delta.scale(1 / state.scale, -1 / state.scale)
-        })
-      },
+          child: Center(
+            child: Column(
+              children: <Widget>[
+                Text(title,
+                  style: TextStyle(
+                      color: Colors.white,
+                      //fontSize: 15.0 / scale
+                      fontSize: 17.0
+                  ),
+                ),
+                renderBody(notifier)
+              ],
+            ),
+          ),
+        )
     );
   }
 
   bool check = false;
 
-  Widget renderBody(MainViewState state) {
+  Widget renderBody(ValueNotifier notifier) {
     return Column(
       children: <Widget>[
-        Listener(
-          onPointerUp: (event) => {
-            if (!state.inZoomMode) {
-              print(DateTime.now().millisecondsSinceEpoch),
-              state.setState(() => {
-                check = !check,
-              })
-            }
+        Checkbox(
+          onChanged: (v) =>
+          {
+            print("click"),
+            check = v,
+            notifier.value++
           },
-          child: Checkbox(
-            onChanged: (v) => {
-            },
-            value: check,
-          ),
+          value: check,
         ),
       ],
     );
@@ -144,7 +123,7 @@ class ScoreNode extends Node {
   }
 
   @override
-  Widget renderBody(State state) {
+  Widget renderBody(ValueNotifier notifier) {
     return Column(
       children: <Widget>[
         Text(getTotalScore().toString(),
