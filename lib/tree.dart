@@ -57,29 +57,47 @@ class Node extends Parent {
     return p;
   }
 
-  Widget render(State state) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-          color: Colors.red
-      ),
-      child: Container(
-        width: 200,
-        height: 80,
-        child: Column(
-          children: <Widget>[
-            Text(title,
-              style: TextStyle(
-                  color: Colors.white,
-                  //fontSize: 15.0 / scale
-                  fontSize: 18.0
+  Widget render(MainViewState state) {
+    return Listener(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+            color: Colors.red
+        ),
+        child: Container(
+          width: 100,
+          height: 100,
+          child: Column(
+            children: <Widget>[
+              Text(title,
+                style: TextStyle(
+                    color: Colors.white,
+                    //fontSize: 15.0 / scale
+                    fontSize: 18.0
+                ),
               ),
-            ),
-            Expanded(
-              child: renderBody(state),
-            ),
-          ],
+              Expanded(
+                child: renderBody(state),
+              ),
+            ],
+          ),
         ),
       ),
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (event) => {
+        state.setState(() => {
+          state.inZoomMode = false
+        })
+      },
+      onPointerUp: (event) => {
+        state.setState(() => {
+          state.inZoomMode = true
+        })
+      },
+      onPointerMove: (event) => {
+        state.setState(() => {
+          position += event.delta.scale(1 / state.scale, -1 / state.scale)
+        })
+      },
     );
   }
 
@@ -117,9 +135,9 @@ class ScoreNode extends Node {
 
   int getTotalScore() {
     int out = score;
-    for (Node n in children) {
+    for (Node n in getDescendants()) {
       if (n is ScoreNode) {
-        out += n.getTotalScore();
+        out += n.score;
       }
     }
     return out;
@@ -138,4 +156,8 @@ class ScoreNode extends Node {
       ],
     );
   }
+}
+
+class EnumNode extends Node {
+
 }

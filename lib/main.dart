@@ -39,7 +39,7 @@ class MainViewState extends State<MainView> {
 
   PhotoViewController controller;
 
-  PhotoViewControllerValue frozenValue;
+  PhotoViewControllerValue frozenValue = PhotoViewControllerValue(position: Offset(0, 0), scale: 1.0, rotation: 0.0, rotationFocusPoint: null);
 
   @override
   void initState() {
@@ -56,18 +56,19 @@ class MainViewState extends State<MainView> {
 
   void listener(PhotoViewControllerValue value) {
     setState(() {
+//      if (inZoomMode) {
+//        frozenValue = value;
+//        scale = value.scale;
+//      } else {
+//        controller.value = frozenValue;
+//      }
       scale = value.scale;
-      if (inZoomMode) {
-        frozenValue = value;
-      } else {
-        controller.value = frozenValue;
-      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    //return buildSmol();
+    return buildSmol();
     //print("Building | " + DateTime.now().millisecondsSinceEpoch.toString());
     var viewport = buildViewport();
     //print("Built viewport | " + DateTime.now().millisecondsSinceEpoch.toString());
@@ -105,6 +106,26 @@ class MainViewState extends State<MainView> {
                         })
                       },
                       child: Text("Reset tree"),
+                    ),
+                    MaterialButton(
+                      onPressed: () =>
+                      {
+                        setState(() =>
+                        {
+                          controller.reset()
+                        })
+                      },
+                      child: Text("Reset view"),
+                    ),
+                    MaterialButton(
+                      onPressed: () =>
+                      {
+                        setState(() =>
+                        {
+                          debugDumpRenderTree()
+                        })
+                      },
+                      child: Text("DUMP"),
                     ),
                   ]
               ),
@@ -146,143 +167,93 @@ class MainViewState extends State<MainView> {
   }
 
   bool check = false;
+  Offset position = Offset(0, -50);
 
   Widget buildSmol() {
-    print("Building | " + DateTime.now().millisecondsSinceEpoch.toString());
-
-    Size size = Size(1000, 1000);
-
-    return Scaffold(
-      appBar: AppBar(title: Text("skilitri")),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: IgnorePointer(
-              child: Center(
-                child: PhotoView.customChild(
-                  child: Stack(
-                    children: <Widget>[
-                      Center(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                              color: Colors.black
-                          ),
-                          child: Container(
-                            width: 1,
-                            height: size.height,
-                          ),
-                        ),
-                      ),
-                      Center(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                              color: Colors.black
-                          ),
-                          child: Container(
-                            width: size.width,
-                            height: 1,
-                          ),
-                        ),
-                      ),
-                      IgnorePointer(
-                        ignoring: false,
-                        child: Stack(
-                            children: [
-                              Center(
-                                  child: Transform.translate(
-                                      offset: Offset(0,0),
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                            color: Colors.red
-                                        ),
-                                        child: Container(
-                                          width: 200,
-                                          height: 80,
-                                          child: Column(
-                                            children: <Widget>[
-                                              Text("A node",
-                                                style: TextStyle(
-                                                    color: Colors.white,
-                                                    //fontSize: 15.0 / scale
-                                                    fontSize: 18.0
-                                                ),
-                                              ),
-                                              Expanded(
-                                                child: Column(
-                                                  children: <Widget>[
-                                                    Listener(
-                                                      onPointerUp: (event) => {
-                                                        setState(() => {
-                                                          check = !check
-                                                        })
-                                                      },
-                                                      child: Checkbox(
-                                                        onChanged: (v) => {
-                                                          print(DateTime.now().millisecondsSinceEpoch),
-//                                                          setState(() => {
-//                                                            check = v,
-//                                                          })
-                                                        },
-                                                        value: check,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      )
-                                  )
-                              )
-                            ]
-                        ),
-                      ),
-                    ],
-                  ),
-                  childSize: size,
-                  backgroundDecoration: BoxDecoration(color: Colors.white),
-                  initialScale: 1.0,
-                  controller: controller,
-                  transitionOnUserGestures: false,
+    return Center(
+      child: PhotoView.customChild(
+        child: Stack(
+          children: <Widget>[
+            // vertical line
+            Center(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                    color: Colors.black
+                ),
+                child: Container(
+                  width: 1,
+                  height: 1000,
                 ),
               ),
-              ignoring: false,
             ),
-          ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-                color: Colors.teal
-            ),
-            child: Container(
-              height: 50,
-              child: Row(
-                  children: [
-                    Checkbox(
-                      value: inZoomMode,
-                      onChanged: (v) =>
-                      {
-                        setState(() =>
-                        {
-                          inZoomMode = v
-                        })
-                      },
-                    ),
-                    MaterialButton(
-                      onPressed: () =>
-                      {
-                        setState(() =>
-                        {
-                          resetTree()
-                        })
-                      },
-                      child: Text("Reset tree"),
-                    ),
-                  ]
+            // horizontal line
+            Center(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                    color: Colors.black
+                ),
+                child: Container(
+                  width: 1000,
+                  height: 1,
+                ),
               ),
             ),
-          )
-        ],
+            // box to debug the initial screen size
+            Center(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                    color: Colors.black12
+                ),
+                child: Container(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                ),
+              ),
+            ),
+            Stack(
+                children: <Widget>[
+                  Center(
+                      child: Transform.translate(
+                          offset: position,
+                          child: Listener(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                  color: Colors.red
+                              ),
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                child: Column(
+                                  children: <Widget>[
+                                    Text("Node",
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18.0
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              ),
+                            ),
+                            onPointerMove: (event) =>
+                            {
+                              setState(() =>
+                              {
+                                position +=
+                                    event.delta.scale(1 / scale, 1 / scale)
+                              })
+                            },
+                          )
+                      )
+                  ),
+                ]
+            ),
+          ],
+        ),
+        childSize: Size(10000, 10000),
+        backgroundDecoration: BoxDecoration(color: Colors.white),
+        initialScale: 1.0,
+        controller: controller,
       ),
     );
   }
@@ -324,22 +295,35 @@ class MainViewState extends State<MainView> {
                 painter: ShapesPainter(tree),
               ),
             ),
-            Stack(
-                children: tree.getDescendants().map((item) =>
-                    Center(
-                        child: Transform.translate(
-                          offset: item.position.scale(1, -1),
-                          child: item.render(this)
-                        )
-                    )
-                ).toList()
+            Listener(
+              child: Stack(
+                  children: tree.getDescendants().map((item) =>
+                      Listener(
+                        child: Center(
+                            child: Transform.translate(
+                                offset: item.position.scale(1, -1),
+                                child: item.render(this)
+                            )
+                        ),
+                        onPointerDown: (event) => {
+                          print("yeah boi")
+                        },
+                      ),
+                  ).toList(),
+              ),
+              onPointerDown: (e) => {
+                print("stuff is happening in here")
+              },
+              behavior: HitTestBehavior.translucent,
             ),
+
           ],
         ),
         childSize: size,
         backgroundDecoration: BoxDecoration(color: inZoomMode ? Colors.grey : Colors.white),
-        initialScale: 1.0,
+        initialScale: PhotoViewComputedScale.contained,
         controller: controller,
+        customSize: size,
         scaleStateCycle: (scale) => getScale(scale),
       ),
     );
