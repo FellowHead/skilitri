@@ -57,32 +57,27 @@ class Node extends Parent {
     return p;
   }
 
-  Widget render(Matrix4 m, ValueNotifier notifier) {
-    Matrix4 matrix = m.clone();
-    matrix.translate(position.dx, -position.dy);
-    return Transform(
-        transform: matrix,
-        child: Container(
-          width: 125,
-          height: 100,
-          decoration: BoxDecoration(
-              color: Colors.red
-          ),
-          child: Center(
-            child: Column(
-              children: <Widget>[
-                Text(title,
-                  style: TextStyle(
-                      color: Colors.white,
-                      //fontSize: 15.0 / scale
-                      fontSize: 17.0
-                  ),
-                ),
-                renderBody(notifier)
-              ],
+  Widget render(ValueNotifier notifier) {
+    return Container(
+      width: 125,
+      height: 100,
+      decoration: BoxDecoration(
+          color: Colors.red
+      ),
+      child: Center(
+        child: Column(
+          children: <Widget>[
+            Text(title,
+              style: TextStyle(
+                  color: Colors.white,
+                  //fontSize: 15.0 / scale
+                  fontSize: 17.0
+              ),
             ),
-          ),
-        )
+            renderBody(notifier)
+          ],
+        ),
+      ),
     );
   }
 
