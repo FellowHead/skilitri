@@ -72,6 +72,7 @@ class Node extends Parent {
   Offset position;
   Parent parent;
   NodeBody _body;
+  bool isDragged = false;
 
   Node({@required String title, @required Offset position, @required NodeBody body, Set<Node> children})
       : super(children) {
@@ -138,7 +139,7 @@ class Node extends Parent {
       width: 225,
       height: 100,
       decoration: BoxDecoration(
-        color: theme.buttonColor,
+        color: theme.buttonColor.withOpacity(isDragged ? 1.0 : 0.75),
         border: Border.all(width: 5, color: sel == SelectionType.None ? Color(0x0) : (sel == SelectionType.Focused ? theme.primaryColor : theme.primaryColorDark)),
         boxShadow: [
           BoxShadow(
@@ -191,9 +192,7 @@ class Node extends Parent {
 abstract class NodeBody {
   Node _node;
 
-  NodeBody() {
-
-  }
+  NodeBody();
 
   static NodeBody decipher(Map<String, dynamic> json) {
     dynamic content = json['content'];
@@ -255,18 +254,35 @@ class DemoBody extends NodeBody {
 
 class ScoreBody extends NodeBody {
   int score;
+  List<DateTime> updoots = List<DateTime>();
 
   ScoreBody({int score = 0}) : super() {
     this.score = score;
   }
 
   ScoreBody.fromJson(Map<String, dynamic> json)
-      : score = json['score'];
+      : score = json['score'], updoots = fromTimestamps(List.from(json['timestamps']));
 
   Map<String, dynamic> toJson() =>
       {
         'score': score,
+        'timestamps': getTimestamps()
       };
+
+  static List<DateTime> fromTimestamps(List<int> timestamps) {
+    List<DateTime> out = List.from(timestamps.map((ts) => DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true)));
+    return out;
+  }
+
+  List<int> getTimestamps() {
+    return updoots.map((dt) => dt.millisecondsSinceEpoch).toList(growable: false);
+  }
+
+  void updoot() {
+    updoots = List<DateTime>();
+    score++;
+    updoots.add(DateTime.now());
+  }
 
   int getTotalScore() {
     int out = score;
@@ -282,12 +298,24 @@ class ScoreBody extends NodeBody {
   Widget renderBody(ValueNotifier notifier) {
     return Column(
       children: <Widget>[
-        Text(getTotalScore().toString(),
-          style: TextStyle(
+//        Text(getTotalScore().toString(),
+//          style: TextStyle(
+//              color: Colors.white,
+//              fontSize: 17.0
+//          ),
+//        ),
+        RaisedButton(
+          onPressed: () => {
+            updoot()
+          },
+          child: Text(
+            getTotalScore().toString(),
+            style: TextStyle(
               color: Colors.white,
               fontSize: 17.0
+            ),
           ),
-        ),
+        )
       ],
     );
   }

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:skilitri/tree.dart';
 import 'package:matrix_gesture_detector/matrix_gesture_detector.dart';
@@ -79,6 +80,7 @@ class SkilitriState extends State<Skilitri> {
   bool inSelectionMode = false;
   Set<Node> selection = {};
   Node active;
+  Node dragged;
 
   void resetTree() {
     tree = Root(
@@ -117,52 +119,56 @@ class SkilitriState extends State<Skilitri> {
 
     return Transform(
         transform: ma,
-        child: MatrixGestureDetector(
-            shouldRotate: false,
-            shouldScale: false,
-            onMatrixUpdate: (m, tm, sm, rm) {
-              Matrix4 change = tm;
-              //print(MatrixGestureDetector.decomposeToValues(matrix));
-              double sc = MatrixGestureDetector
-                  .decomposeToValues(matrix)
-                  .scale;
-              //change.multiplyTranspose(matrix);
-              n.position += Offset(change
-                  .getTranslation()
-                  .x / sc, -change
-                  .getTranslation()
-                  .y / sc);
-              notifier.value++;
+        child: GestureDetector(
+            onTapUp: (details) =>
+            {
+              //print("onTapUp on " + n.toString()),
+              if (inSelectionMode) {
+                if (selection.contains(n)) {
+                  if (selection.length == 1) {
+                    exitSelectionMode()
+                  } else
+                    {
+                      selection.remove(n),
+                      if (active == n) {
+                        active = null
+                      }
+                    }
+                } else
+                  {
+                    select(n, false)
+                  },
+                notifier.value++
+              } else {
+
+              }
             },
-            child: GestureDetector(
-                onTapUp: (details) =>
-                {
-                  print("onTapUp on " + n.toString()),
-                  if (inSelectionMode) {
-                    if (selection.contains(n)) {
-                      if (selection.length == 1) {
-                        exitSelectionMode()
-                      } else
-                        {
-                          selection.remove(n),
-                          if (active == n) {
-                            active = null
-                          }
-                        }
-                    } else
-                      {
-                        select(n, false)
-                      },
-                    notifier.value++
-                  }
-                },
-                onTapDown: (details) => {
-                  print("28 tap wounds")
-                },
-                onLongPressStart: (details) =>
-                {
-                  Feedback.forLongPress(context),
-                  select(n, true)
+            onPanDown: (yeah) => {
+              n.isDragged = true,
+              dragged = n
+            },
+            dragStartBehavior: DragStartBehavior.down,
+            onLongPressStart: (details) =>
+            {
+              Feedback.forLongPress(context),
+              select(n, true)
+            },
+            child: MatrixGestureDetector(
+                shouldRotate: false,
+                shouldScale: false,
+                onMatrixUpdate: (m, tm, sm, rm) {
+                  Matrix4 change = tm;
+                  //print(MatrixGestureDetector.decomposeToValues(matrix));
+                  double sc = MatrixGestureDetector
+                      .decomposeToValues(matrix)
+                      .scale;
+                  //change.multiplyTranspose(matrix);
+                  n.position += Offset(change
+                      .getTranslation()
+                      .x / sc, -change
+                      .getTranslation()
+                      .y / sc);
+                  notifier.value++;
                 },
                 child: Center(
                   child: n.render(Theme.of(context), notifier, getSelectionType(n)),
@@ -238,7 +244,8 @@ class SkilitriState extends State<Skilitri> {
     Fluttertoast.showToast(
       msg: "Skilltree gespeichert!",
       toastLength: Toast.LENGTH_SHORT,
-      gravity: ToastGravity.CENTER,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: Color(0x60000000),
       timeInSecForIos: 1,
     );
   }
@@ -271,7 +278,8 @@ class SkilitriState extends State<Skilitri> {
                       child: Text('Reset tree'),
                     ),
                     IconButton(
-                      onPressed: () => {
+                      onPressed: () =>
+                      {
                         _save()
                       },
                       icon: Icon(
@@ -279,7 +287,8 @@ class SkilitriState extends State<Skilitri> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () => {
+                      onPressed: () =>
+                      {
                         _read()
                       },
                       icon: Icon(
@@ -291,57 +300,68 @@ class SkilitriState extends State<Skilitri> {
                 height: 50,
               ),
               Expanded(
-                child: LayoutBuilder(
-                  builder: (ctx, constraints) {
-                    return MatrixGestureDetector(
-                        onMatrixUpdate: (m, tm, sm, rm) {
-                          matrix =
-                              MatrixGestureDetector.compose(
-                                  matrix, tm, sm, null);
-                          notifier.value++;
-                        },
-                        child: GestureDetector(
-                          onLongPressStart: (details) =>
-                          {
-                            Feedback.forLongPress(context),
-                            if (inSelectionMode) {
-                              exitSelectionMode()
-                            } else {
-                              createEmptyNode(
-                                  screenToView(context, details.globalPosition))
-                            }
-                          },
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                              width: double.infinity,
-                              height: double.infinity,
-                              alignment: Alignment.topLeft,
-                              color: Theme.of(context).backgroundColor,
-                              child: AnimatedBuilder(
-                                  animation: notifier,
-                                  builder: (ctx, child) {
-                                    return Container(
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        child: Stack(
-                                            fit: StackFit.expand,
-                                            children: [
-                                              buildCanvas(),
-                                              Stack(
-                                                children: tree.getDescendants()
-                                                    .map((n) =>
-                                                    buildNode(n)
-                                                ).toList(),
-                                              )
-                                            ]
-                                        )
-                                    );
-                                  }
-                              )
-                          ),
-                        )
-                    );
+                child: Listener(
+                  behavior: HitTestBehavior.translucent,
+                  onPointerUp: (lol) => {
+                    onDragStop()
                   },
+                  child: LayoutBuilder(
+                    builder: (ctx, constraints) {
+                      return MatrixGestureDetector(
+                          onMatrixUpdate: (m, tm, sm, rm) {
+                            matrix =
+                                MatrixGestureDetector.compose(
+                                    matrix, tm, sm, null);
+                            notifier.value++;
+                          },
+                          child: GestureDetector(
+                            onLongPressStart: (details) =>
+                            {
+                              Feedback.forLongPress(context),
+                              if (inSelectionMode) {
+                                exitSelectionMode()
+                              } else
+                                {
+                                  createEmptyNode(
+                                      screenToView(
+                                          context, details.globalPosition))
+                                }
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                                width: double.infinity,
+                                height: double.infinity,
+                                alignment: Alignment.topLeft,
+                                color: Theme
+                                    .of(context)
+                                    .backgroundColor,
+                                child: AnimatedBuilder(
+                                    animation: notifier,
+                                    builder: (ctx, child) {
+                                      return Container(
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          child: Stack(
+                                              fit: StackFit.expand,
+                                              children: [
+                                                buildCanvas(),
+                                                Stack(
+                                                  children: tree
+                                                      .getDescendants()
+                                                      .map((n) =>
+                                                      buildNode(n)
+                                                  ).toList(),
+                                                )
+                                              ]
+                                          )
+                                      );
+                                    }
+                                )
+                            ),
+                          )
+                      );
+                    },
+                  ),
                 ),
               ),
               // SELECTION MODE BAR
@@ -349,27 +369,30 @@ class SkilitriState extends State<Skilitri> {
                 duration: Duration(milliseconds: 300),
                 curve: Curves.decelerate,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      blurRadius: 10
-                    )
-                  ]
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                          blurRadius: 10
+                      )
+                    ]
                 ),
                 child: Row(
                   children: <Widget>[
                     MaterialButton(
                       onPressed: () =>
                       {
-                        setState(() => {
+                        setState(() =>
+                        {
                           exitSelectionMode()
                         })
                       },
                       child: Text('Exit'),
                     ),
                     IconButton(
-                      onPressed: () => {
-                        setState(() => {
+                      onPressed: () =>
+                      {
+                        setState(() =>
+                        {
                           for (Node n in selection) {
                             n.remove(true)
                           },
@@ -377,20 +400,23 @@ class SkilitriState extends State<Skilitri> {
                         })
                       },
                       icon: Icon(
-                        Icons.delete
+                          Icons.delete
                       ),
                     ),
                     IconButton(
-                      onPressed: selection.length != 1 ? () => {
-                        setState(() => {
+                      onPressed: selection.length != 1 ? () =>
+                      {
+                        setState(() =>
+                        {
                           if (active != null) {
                             for (Node n in selection) {
                               if (n != active) {
                                 if (!active.getAscendants().contains(n)) {
                                   active.addChild(n),
-                                } else {
-                                  print('puh knappe nummer')
-                                }
+                                } else
+                                  {
+                                    print('puh knappe nummer')
+                                  }
                               }
                             },
                           },
@@ -401,8 +427,10 @@ class SkilitriState extends State<Skilitri> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () => {
-                        setState(() => {
+                      onPressed: () =>
+                      {
+                        setState(() =>
+                        {
                           for (Node n in selection) {
                             n.setParent(tree)
                           },
@@ -413,8 +441,10 @@ class SkilitriState extends State<Skilitri> {
                       ),
                     ),
                     IconButton(
-                      onPressed: selection.length == 1 ? () => {
-                        setState(() => {
+                      onPressed: selection.length == 1 ? () =>
+                      {
+                        setState(() =>
+                        {
                           _showDialog(selection.first)
                         })
                       } : null,
@@ -429,6 +459,13 @@ class SkilitriState extends State<Skilitri> {
             ]
         )
     );
+  }
+
+  void onDragStop() {
+    if (dragged != null) {
+      dragged.isDragged = false;
+      notifier.value++;
+    }
   }
 
   void _showToast(BuildContext context) {
