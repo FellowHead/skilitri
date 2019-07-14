@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'main.dart';
 
 class Root extends Parent {
   Root([Set<Node> children]) : super(children);
@@ -72,19 +69,23 @@ class Node extends Parent {
   Offset position;
   Parent parent;
   NodeBody _body;
+  NodeBody get body => _body;
   bool isDragged = false;
+  DateTime creationDate;
 
   Node({@required String title, @required Offset position, @required NodeBody body, Set<Node> children})
       : super(children) {
     this.title = title;
     this.position = position;
+    creationDate = DateTime.now();
     setBody(body);
   }
 
-
   Node.fromJson(Map<String, dynamic> json)
       : title = json['title'],
-        position = Offset(json['position']['x'], json['position']['y']), super(Parent._childrenFromJson(json)) {
+        position = Offset(json['position']['x'], json['position']['y']),
+        creationDate = DateTime.fromMillisecondsSinceEpoch(json['created']),
+        super(Parent._childrenFromJson(json)) {
     setBody(NodeBody.decipher(json['body']));
   }
 
@@ -94,6 +95,7 @@ class Node extends Parent {
           'x': position.dx,
           'y': position.dy
         },
+        'created': creationDate.millisecondsSinceEpoch,
         'body': {
           'type': _body.getTypeId(),
           'content': _body.toJson()
@@ -187,6 +189,44 @@ class Node extends Parent {
     parent._children.remove(this);
     parent = null;
   }
+
+  Widget getChildrenInfo(ValueNotifier notifier) {
+    List<ScoreData> data = List();
+    for (Node sn in _children.where((n) => n.body is ScoreBody)) {
+      (sn.body as ScoreBody).updoots.forEach((dt) => {
+        data.add(ScoreData(sn, dt))
+      });
+    }
+    data.sort((a, b) => b.count.millisecondsSinceEpoch - a.count.millisecondsSinceEpoch);
+    return ListView(
+      physics: NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      padding: EdgeInsets.symmetric(vertical: 4.0),
+      children: data.map((d) =>
+          ListTile(
+            title: Text(ScoreBody.dateToBeautiful(d.count)),
+            onTap: () => {
+
+            },
+            leading: Text(d.node.title),
+            trailing: IconButton(
+              onPressed: () => {
+                (d.node.body as ScoreBody).updoots.remove(d.count),
+                (d.node.body as ScoreBody).score--,
+                notifier.value++
+              },
+              icon: Icon(Icons.delete),
+            ),
+          )).toList(),
+    );
+  }
+}
+
+class ScoreData {
+  Node node;
+  DateTime count;
+
+  ScoreData(this.node, this.count);
 }
 
 abstract class NodeBody {
@@ -211,6 +251,7 @@ abstract class NodeBody {
   }
 
   Widget renderBody(ValueNotifier notifier);
+  List<Widget> getInfo(ValueNotifier notifier);
 
   NodeBody.fromJson(Map<String, dynamic> json);
   Map<String, dynamic> toJson();
@@ -250,14 +291,32 @@ class DemoBody extends NodeBody {
   String getTypeId() {
     return "demo";
   }
+
+  @override
+  List<Widget> getInfo(ValueNotifier notifier) {
+    return [
+      Text("sicko node node node node node node"),
+      CheckboxListTile(
+        title: Text("cha cha real smooth?"),
+        controlAffinity: ListTileControlAffinity.leading,
+        onChanged: (v) =>
+        {
+          check = v,
+          notifier.value++
+        },
+        value: check,
+      ),
+    ];
+  }
 }
 
 class ScoreBody extends NodeBody {
   int score;
-  List<DateTime> updoots = List<DateTime>();
+  List<DateTime> updoots;
 
   ScoreBody({int score = 0}) : super() {
     this.score = score;
+    updoots = List<DateTime>();
   }
 
   ScoreBody.fromJson(Map<String, dynamic> json)
@@ -271,17 +330,18 @@ class ScoreBody extends NodeBody {
 
   static List<DateTime> fromTimestamps(List<int> timestamps) {
     List<DateTime> out = List.from(timestamps.map((ts) => DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true)));
+    sort(out);
     return out;
   }
 
   List<int> getTimestamps() {
-    return updoots.map((dt) => dt.millisecondsSinceEpoch).toList(growable: false);
+    return updoots.map((dt) => dt.millisecondsSinceEpoch).toList();
   }
 
   void updoot() {
-    updoots = List<DateTime>();
     score++;
     updoots.add(DateTime.now());
+    sort(updoots);
   }
 
   int getTotalScore() {
@@ -324,4 +384,83 @@ class ScoreBody extends NodeBody {
   String getTypeId() {
     return "score";
   }
+
+  Duration getStudyDuration() {
+    return DateTime.now().difference(_node.creationDate);
+  }
+
+  static void sort(List<DateTime> datetimes) {
+    datetimes.sort((a, b) => b.millisecondsSinceEpoch - a.millisecondsSinceEpoch);
+  }
+
+  static String getWeekdayName(int wekd) {
+    switch (wekd) {
+      case 1: return "Monday";
+      case 2: return "Tuesday";
+      case 3: return "Wednesday";
+      case 4: return "Thursday";
+      case 5: return "Friday";
+      case 6: return "Saturday";
+      case 7: return "Sunday";
+    }
+    return "Pizza time ($wekd)";
+  }
+
+  static String _betterify(dynamic d) {
+    return d.toString().padLeft(2, '0');
+  }
+
+  static String dateToBeautiful(DateTime dt) {
+    return "${getWeekdayName(dt.weekday)}, ${_betterify(dt.day)}.${_betterify(dt.month)}.${dt.year}, ${_betterify(dt.hour)}:${_betterify(dt.minute)}";
+  }
+
+  @override
+  List<Widget> getInfo(ValueNotifier notifier) {
+    //print("getinfo");
+    if (_cScore.text != score.toString()) {
+      _cScore.text = score.toString();
+    }
+
+    return [
+      Text(updoots.length.toString() + " counts in "
+          + getStudyDuration().inDays.toString() + " days, "
+          + (getStudyDuration().inHours % Duration.hoursPerDay).toString() +
+          " hours"),
+      Text(""),
+      TextField(
+          decoration: InputDecoration(
+              hintText: "Enter score..."
+          ),
+          onChanged: (s) =>
+          {
+            score = int.parse(s),
+            //notifier.value++
+          },
+          keyboardType: TextInputType.numberWithOptions(
+              signed: false, decimal: false),
+          controller: _cScore
+      ),
+      ListView(
+        physics: NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+              padding: EdgeInsets.all(4.0),
+              children: updoots.map((dt) =>
+                  ListTile(
+                    title: Text(dateToBeautiful(dt)),
+                    onTap: () => {
+
+                    },
+                    trailing: IconButton(
+                      onPressed: () => {
+                        updoots.remove(dt),
+                        score--,
+                        notifier.value++
+                      },
+                      icon: Icon(Icons.delete),
+                    ),
+                  )).toList(),
+            ),
+    ];
+  }
+  TextEditingController _cScore = TextEditingController();
 }
