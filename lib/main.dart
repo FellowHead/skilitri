@@ -12,27 +12,16 @@ import 'package:fluttertoast/fluttertoast.dart';
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'skilitri',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.teal,
         primaryColorLight: Color(0xff90ffa0),
         primaryColor: Color(0xff60dcaf),
         primaryColorDark: Color(0xffd0e0e0),
         backgroundColor: Color(0xffa0a0a0),
-        //buttonColor: Color(0xff6070c0)
       ),
       home: Skilitri()
     );
@@ -48,7 +37,7 @@ class Skilitri extends StatefulWidget {
 
 class SkilitriState extends State<Skilitri> {
   bool check = false;
-  Root tree;
+  Tree tree;
   Matrix4 matrix = Matrix4.identity();
   ValueNotifier<int> notifier = ValueNotifier(0);
   bool inSelectionMode = false;
@@ -57,7 +46,7 @@ class SkilitriState extends State<Skilitri> {
   Node dragged;
 
   void resetTree() {
-    tree = Root(
+    tree = Tree(
         {
           Node(
               title: "Node",
@@ -114,7 +103,7 @@ class SkilitriState extends State<Skilitri> {
                   },
                 notifier.value++
               } else {
-                displayInfo(n)
+                n.displayInfo(context)
               },
               onDragStop()
             },
@@ -188,7 +177,8 @@ class SkilitriState extends State<Skilitri> {
         position: position,
         body: ScoreBody(score: 0)
     );
-    tree.addChild(n);
+    tree.nodes.add(n);
+    n.tree = tree;
     select(n, true);
     //notifier.value++;
   }
@@ -198,11 +188,11 @@ class SkilitriState extends State<Skilitri> {
   _read() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/tree.fwd');
+      final file = File('${directory.path}/baum.fwd');
       String text = await file.readAsString();
       print(text);
       setState(() => {
-        tree = Root.fromJson(jsonDecode(text))
+        tree = Tree.fromJson(jsonDecode(text))
       });
     } on FileSystemException {
       print("Can't read file");
@@ -211,8 +201,9 @@ class SkilitriState extends State<Skilitri> {
 
   _save() async {
     final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/tree.fwd');
+    final file = File('${directory.path}/baum.fwd');
     final text = jsonEncode(tree.toJson());
+    print(text);
     await file.writeAsString(text);
     print('saved');
 
@@ -328,7 +319,7 @@ class SkilitriState extends State<Skilitri> {
                                                     buildCanvas(),
                                                     Stack(
                                                       children: tree
-                                                          .getDescendants()
+                                                          .nodes
                                                           .map((n) =>
                                                           buildNode(n)
                                                       ).toList(),
@@ -413,7 +404,11 @@ class SkilitriState extends State<Skilitri> {
                             setState(() =>
                             {
                               for (Node n in selection) {
-                                n.setParent(tree)
+                                for (Node c in n.children.toSet()) {
+                                  if (selection.contains(c)) {
+                                    c.unlinkParent(n)
+                                  }
+                                }
                               },
                             })
                           },
@@ -426,7 +421,7 @@ class SkilitriState extends State<Skilitri> {
                           {
                             setState(() =>
                             {
-                              displayInfo(selection.first)
+                              selection.first.displayInfo(context)
                             })
                           } : null,
                           icon: Icon(
@@ -448,13 +443,6 @@ class SkilitriState extends State<Skilitri> {
       dragged.isDragged = false;
       notifier.value++;
     }
-  }
-
-  void displayInfo(Node n) {
-    Navigator.push(context, MaterialPageRoute(
-      builder: (ctx) => NodeInfo(node: n),
-      settings: RouteSettings()
-    ));
   }
 
   void exitSelectionMode() {
@@ -504,22 +492,22 @@ class SkilitriState extends State<Skilitri> {
 }
 
 class ShapesPainter extends CustomPainter {
-  Root root;
+  Tree root;
 
-  ShapesPainter(Root root) {
+  ShapesPainter(Tree root) {
     this.root = root;
   }
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
-    paint.color = Colors.black;
+    paint.color = Colors.black.withOpacity(0.25);
     paint.strokeWidth = 5;
 
-    for (Node n in root.getDescendants()) {
-      if (n.parent is Node) {
-        Offset start = n.position.scale(1, -1);
-        Offset end = (n.parent as Node).position.scale(1, -1);
+    for (Node n in root.nodes) {
+      for (Node c in n.children) {
+        Offset start = c.position.scale(1, -1);
+        Offset end = n.position.scale(1, -1);
         canvas.drawLine(start, end, paint);
         canvas.drawCircle(Offset.lerp(start, end, 0.7), 25, paint);
       }
@@ -527,68 +515,4 @@ class ShapesPainter extends CustomPainter {
   }
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-class NodeInfo extends StatefulWidget {
-  final Node node;
-  final ValueNotifier<int> notif = ValueNotifier(0);
-
-  NodeInfo({Key key, @required this.node}) : super(key: key);
-
-  @override
-  State<StatefulWidget> createState() {
-    return NodeInfoState();
-  }
-}
-
-class NodeInfoState extends State<NodeInfo> {
-  Timer timer;
-  TextEditingController cTitle;
-
-  @override
-  Widget build(BuildContext context) {
-    if (timer == null) {
-      timer = Timer.periodic(
-          Duration(seconds: 1), (Timer t) => widget.notif.value++);
-      cTitle = TextEditingController(text: widget.node.title);
-    }
-
-    return Scaffold(
-        appBar: AppBar(
-          title: Text('Node information'),
-        ),
-        body: AnimatedBuilder(
-            animation: widget.notif, builder: (ctx, constraints) =>
-        Container(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(10.0),
-              child: Column(
-                children: <Widget>[
-                  TextField(
-                      decoration: InputDecoration(
-                          hintText: "Name the node..."
-                      ),
-                      onChanged: (s) =>
-                      {
-                        widget.node.title = s
-                      },
-                      controller: cTitle
-                  ),
-                  Divider(
-                    height: 30.0,
-                  )
-                ]
-                  ..addAll(widget.node.body.getInfo(context, widget.notif))
-                ..add(Divider(
-                      height: 30.0,
-                    ))
-                ..add(widget.node.getChildrenInfo(widget.notif))
-              ),
-            ),
-            )
-        )
-        )
-    );
-  }
 }
