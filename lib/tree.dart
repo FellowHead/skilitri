@@ -136,34 +136,40 @@ class Node extends Parent {
     return p;
   }
 
-  Widget render(ThemeData theme, ValueNotifier notifier, SelectionType sel) {
+  Widget render(BuildContext context, ValueNotifier notifier, SelectionType sel) {
+    ThemeData theme = Theme.of(context);
+
     return Container(
-      width: 225,
-      height: 100,
       decoration: BoxDecoration(
-        color: theme.buttonColor.withOpacity(isDragged ? 1.0 : 0.75),
+        color: Color(0xff7030d0).withOpacity(isDragged ? 1.0 : 0.75),
         border: Border.all(width: 5, color: sel == SelectionType.None ? Color(0x0) : (sel == SelectionType.Focused ? theme.primaryColor : theme.primaryColorDark)),
         boxShadow: [
           BoxShadow(
-            blurRadius: 15,
+            blurRadius: 25,
             spreadRadius: 5,
             color: Colors.black26
           )
-        ]
+        ],
+        borderRadius: BorderRadius.all(Radius.circular(10.0))
       ),
       child: Center(
-        child: Column(
+        widthFactor: 1.0,
+        heightFactor: 1.0,
+        child: Container(
+          padding: EdgeInsets.all(16.0),
+          //decoration: BoxDecoration(color: Colors.yellow),
+          child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Text(title,
               style: TextStyle(
-                  color: Colors.white,
-                  //fontSize: 15.0 / scale
-                  fontSize: 18.0
+                  color: Colors.white
               ),
             ),
-            _body.renderBody(notifier)
+            _body.renderBody(context, notifier)
           ],
         ),
+        )
       ),
     );
   }
@@ -250,8 +256,8 @@ abstract class NodeBody {
     _node = node;
   }
 
-  Widget renderBody(ValueNotifier notifier);
-  List<Widget> getInfo(ValueNotifier notifier);
+  Widget renderBody(BuildContext context, ValueNotifier notifier);
+  List<Widget> getInfo(BuildContext context, ValueNotifier notifier);
 
   NodeBody.fromJson(Map<String, dynamic> json);
   Map<String, dynamic> toJson();
@@ -272,7 +278,7 @@ class DemoBody extends NodeBody {
       };
 
   @override
-  Widget renderBody(ValueNotifier notifier) {
+  Widget renderBody(BuildContext context, ValueNotifier notifier) {
     return Column(
       children: <Widget>[
         Checkbox(
@@ -293,7 +299,7 @@ class DemoBody extends NodeBody {
   }
 
   @override
-  List<Widget> getInfo(ValueNotifier notifier) {
+  List<Widget> getInfo(BuildContext context, ValueNotifier notifier) {
     return [
       Text("sicko node node node node node node"),
       CheckboxListTile(
@@ -355,25 +361,15 @@ class ScoreBody extends NodeBody {
   }
 
   @override
-  Widget renderBody(ValueNotifier notifier) {
+  Widget renderBody(BuildContext context, ValueNotifier notifier) {
     return Column(
       children: <Widget>[
-//        Text(getTotalScore().toString(),
-//          style: TextStyle(
-//              color: Colors.white,
-//              fontSize: 17.0
-//          ),
-//        ),
         RaisedButton(
           onPressed: () => {
             updoot()
           },
           child: Text(
-            getTotalScore().toString(),
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17.0
-            ),
+            getTotalScore().toString()
           ),
         )
       ],
@@ -415,18 +411,12 @@ class ScoreBody extends NodeBody {
   }
 
   @override
-  List<Widget> getInfo(ValueNotifier notifier) {
-    //print("getinfo");
-    if (_cScore.text != score.toString()) {
+  List<Widget> getInfo(BuildContext context, ValueNotifier notifier) {
+    if (_cScore.text != score.toString() && FocusScope.of(context).focusedChild is TextField) {
       _cScore.text = score.toString();
     }
 
     return [
-      Text(updoots.length.toString() + " counts in "
-          + getStudyDuration().inDays.toString() + " days, "
-          + (getStudyDuration().inHours % Duration.hoursPerDay).toString() +
-          " hours"),
-      Text(""),
       TextField(
           decoration: InputDecoration(
               hintText: "Enter score..."
@@ -439,6 +429,30 @@ class ScoreBody extends NodeBody {
           keyboardType: TextInputType.numberWithOptions(
               signed: false, decimal: false),
           controller: _cScore
+      ),
+      Text(updoots.length.toString() + " counts"),
+      Text("Total: " + getTotalScore().toString()),
+      Text(getStudyDuration().inDays.toString() + " days, "
+          + (getStudyDuration().inHours % Duration.hoursPerDay).toString() + " hours"),
+      RaisedButton(
+        onPressed: () => {
+          showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: _node.creationDate,
+              lastDate: DateTime.now(),
+          ).then((d) => {
+            showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now()
+            ).then((v) => {
+              updoots.add(d.add(Duration(hours: v.hour, minutes: v.minute))),
+              score++,
+              notifier.value++
+            })
+          })
+        },
+        child: Text('Add count'),
       ),
       ListView(
         physics: NeverScrollableScrollPhysics(),

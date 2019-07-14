@@ -8,8 +8,6 @@ import 'package:skilitri/tree.dart';
 import 'package:matrix_gesture_detector/matrix_gesture_detector.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_cupertino_localizations/flutter_cupertino_localizations.dart';
 
 void main() => runApp(MyApp());
 
@@ -18,16 +16,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        localizationsDelegates: [
-          // ... app-specific localization delegate[s] here
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: [
-          const Locale('en'),
-          const Locale('de'),
-        ],
       title: 'skilitri',
       theme: ThemeData(
         // This is the theme of your application.
@@ -44,39 +32,12 @@ class MyApp extends StatelessWidget {
         primaryColor: Color(0xff60dcaf),
         primaryColorDark: Color(0xffd0e0e0),
         backgroundColor: Color(0xffa0a0a0),
-        buttonColor: Color(0xff6070c0)
+        //buttonColor: Color(0xff6070c0)
       ),
       home: Skilitri()
     );
   }
 }
-
-class ShapesPainter extends CustomPainter {
-  Root root;
-
-  ShapesPainter(Root root) {
-    this.root = root;
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-    paint.color = Colors.black;
-    paint.strokeWidth = 5;
-
-    for (Node n in root.getDescendants()) {
-      if (n.parent is Node) {
-        Offset start = n.position.scale(1, -1);
-        Offset end = (n.parent as Node).position.scale(1, -1);
-        canvas.drawLine(start, end, paint);
-        canvas.drawCircle(Offset.lerp(start, end, 0.7), 25, paint);
-      }
-    }
-  }
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
 
 class Skilitri extends StatefulWidget {
   @override
@@ -185,7 +146,7 @@ class SkilitriState extends State<Skilitri> {
                   notifier.value++;
                 },
                 child: Center(
-                  child: n.render(Theme.of(context), notifier, getSelectionType(n)),
+                  child: n.render(context, notifier, getSelectionType(n)),
                 )
             )
         )
@@ -256,7 +217,7 @@ class SkilitriState extends State<Skilitri> {
     print('saved');
 
     Fluttertoast.showToast(
-      msg: "Saved!",
+      msg: "Saved",
       toastLength: Toast.LENGTH_SHORT,
       gravity: ToastGravity.BOTTOM,
       backgroundColor: Color(0x60000000),
@@ -542,6 +503,32 @@ class SkilitriState extends State<Skilitri> {
   }
 }
 
+class ShapesPainter extends CustomPainter {
+  Root root;
+
+  ShapesPainter(Root root) {
+    this.root = root;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+    paint.color = Colors.black;
+    paint.strokeWidth = 5;
+
+    for (Node n in root.getDescendants()) {
+      if (n.parent is Node) {
+        Offset start = n.position.scale(1, -1);
+        Offset end = (n.parent as Node).position.scale(1, -1);
+        canvas.drawLine(start, end, paint);
+        canvas.drawCircle(Offset.lerp(start, end, 0.7), 25, paint);
+      }
+    }
+  }
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
 class NodeInfo extends StatefulWidget {
   final Node node;
   final ValueNotifier<int> notif = ValueNotifier(0);
@@ -592,7 +579,7 @@ class NodeInfoState extends State<NodeInfo> {
                     height: 30.0,
                   )
                 ]
-                  ..addAll(widget.node.body.getInfo(widget.notif))
+                  ..addAll(widget.node.body.getInfo(context, widget.notif))
                 ..add(Divider(
                       height: 30.0,
                     ))
