@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class Tree {
   Set<Node> nodes = {};
@@ -178,35 +180,38 @@ class Node {
 
     return Container(
       decoration: BoxDecoration(
-        color: Color(0xff7030d0).withOpacity(isDragged ? 1.0 : 0.75),
-        border: Border.all(width: 5, color: sel == SelectionType.None ? Color(0x0) : (sel == SelectionType.Focused ? theme.primaryColor : theme.primaryColorDark)),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 25,
-            spreadRadius: 5,
-            color: Colors.black26
-          )
-        ],
-        borderRadius: BorderRadius.all(Radius.circular(10.0))
+          color: Color(0xff7030d0).withOpacity(isDragged ? 1.0 : 0.75),
+          border: Border.all(width: 5,
+              color: sel == SelectionType.None ? Color(0x0) : (sel ==
+                  SelectionType.Focused ? theme.primaryColor : theme
+                  .primaryColorDark)),
+          boxShadow: [
+            BoxShadow(
+                blurRadius: 25,
+                spreadRadius: 5,
+                color: Colors.black26
+            )
+          ],
+          //borderRadius: BorderRadius.all(Radius.circular(10.0))
       ),
       child: Center(
         widthFactor: 1.0,
-        heightFactor: 1.0,
-        child: Container(
-          padding: EdgeInsets.all(16.0),
-          //decoration: BoxDecoration(color: Colors.yellow),
-          child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Text(title,
-              style: TextStyle(
-                  color: Colors.white
-              ),
+          heightFactor: 1.0,
+          child: Container(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(title,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20.0
+                  ),
+                ),
+                _body.renderBody(context, notifier)
+              ],
             ),
-            _body.renderBody(context, notifier)
-          ],
-        ),
-        )
+          )
       ),
     );
   }
@@ -414,6 +419,7 @@ class ScoreBody extends NodeBody {
     return Column(
       children: <Widget>[
         RaisedButton(
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           onPressed: () => {
             updoot()
           },
@@ -487,9 +493,9 @@ class ScoreBody extends NodeBody {
         onPressed: () => {
           showDatePicker(
               context: context,
-              initialDate: DateTime.now(),
-              firstDate: _node.creationDate,
-              lastDate: DateTime.now(),
+              initialDate: DateTime.now().subtract(Duration(days: 1)),
+              firstDate: DateTime.fromMillisecondsSinceEpoch(0),
+              lastDate: DateTime.now().add(Duration(days: 7)),
           ).then((d) => {
             if (d != null) {
               showTimePicker(
@@ -532,7 +538,158 @@ class ScoreBody extends NodeBody {
   TextEditingController _cScore = TextEditingController();
 }
 
+class MediaBody extends NodeBody {
+  List<MediaItem> items;
 
+  MediaBody() : super() {
+    items = [];
+  }
+
+  @override
+  List<Widget> getInfo(BuildContext context, ValueNotifier notifier) {
+    return [
+      ListView(
+        physics: NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        padding: EdgeInsets.all(4.0),
+        children: items.map((mi) =>
+            ListTile(
+              title: Text("ähhh..."),
+              onTap: () => {
+                // TODO: display media
+              },
+              trailing: IconButton(
+                onPressed: () => {
+                  items.remove(mi),
+                  notifier.value++
+                },
+                icon: Icon(Icons.delete),
+              ),
+            )).toList(),
+      ),
+    ];
+  }
+
+  @override
+  String getTypeId() {
+    return "media";
+  }
+
+  Future getImage() async {
+    var image = await ImagePicker.pickImage(source: ImageSource.camera);
+    items.add(ImageItem(image));
+  }
+
+  void showSelection(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text("Record some shiz"),
+          content: Container(
+            child: Center(
+              child: Row(
+                children: <Widget>[
+                  IconButton(
+                    icon: Icon(Icons.photo_camera),
+                    onPressed: () => getImage()
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.mic),
+                    onPressed: () => {
+
+                    },
+                  )
+                ],
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            FlatButton(
+              onPressed: () => {
+                Navigator.of(ctx).pop()
+              },
+              child: Text("Cancel"),
+            )
+          ],
+        );
+      }
+    );
+  }
+
+  @override
+  Widget renderBody(BuildContext context, ValueNotifier notifier) {
+    return RaisedButton(
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      onPressed: () => {
+        showSelection(context)
+      },
+      child: Text(
+        "Record something"
+      ),
+    );
+  }
+
+  static List<MediaItem> loadItems(List<dynamic> json) {
+    // TODO
+    print("todo und so");
+  }
+
+  MediaBody.fromJson(Map<String, dynamic> json)
+      : items = loadItems(json['items']);
+
+  Map<String, dynamic> toJson() =>
+      {
+        'items': items.map((mi) => mi.toJson()).toList(growable: false)
+      };
+}
+
+abstract class MediaItem {
+  DateTime creationDate;
+  File file;
+
+  MediaItem(this.file, [this.creationDate]) {
+    if (creationDate == null) {
+      creationDate = DateTime.now();
+    }
+  }
+
+  MediaItem._js(json) : creationDate = DateTime.fromMillisecondsSinceEpoch(json['created']), file = json['path'];
+
+  static MediaItem _decipher(Map<String, dynamic> json) {
+    switch (json['type']) {
+      case ImageItem.TYPENAME: return ImageItem.fromJson(json);
+    }
+    print("error? no media item created from json");
+  }
+
+  String _getType();
+  String _getPath();
+
+  Map<String, dynamic> toJson() =>
+      {
+        'type': _getType(),
+        'created': creationDate.millisecondsSinceEpoch,
+        'path': _getPath()
+      };
+}
+class ImageItem extends MediaItem {
+  static const String TYPENAME = "image";
+
+  ImageItem(File file, [DateTime creationDate]) : super(file, creationDate);
+
+  ImageItem.fromJson(Map<String, dynamic> json) : super._js(json);
+
+  @override
+  String _getPath() {
+    return file.path;
+  }
+
+  @override
+  String _getType() {
+    return TYPENAME;
+  }
+}
 
 class NodeInfo extends StatefulWidget {
   final Node node;

@@ -171,6 +171,63 @@ class SkilitriState extends State<Skilitri> {
     });
   }
 
+  void onAddNode(Offset position) {
+    var controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text("Create new node"),
+          content: Column(
+            children: <Widget>[
+              TextField(
+                decoration: InputDecoration(
+                  hintText: "Enter node name..."
+                ),
+                controller: controller,
+              ),
+              Center(
+                widthFactor: 1.0,
+                heightFactor: 1.0,
+                child: Row(
+                  children: <Widget>[
+                    IconButton(
+                      onPressed: () => {
+                        addNode(controller.text, ScoreBody(), position),
+                        Navigator.of(ctx).pop()
+                      },
+                      icon: Icon(Icons.score),
+                    ),
+                    IconButton(
+                      onPressed: () => {
+                        addNode(controller.text, MediaBody(), position),
+                        Navigator.of(ctx).pop()
+                      },
+                      icon: Icon(Icons.image),
+                    )
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
+  void addNode(String title, NodeBody body, Offset position) {
+    Node n = Node(
+        title: title,
+        position: position,
+        body: body
+    );
+    tree.nodes.add(n);
+    n.tree = tree;
+    select(n, true);
+  }
+
+  @deprecated
   void createEmptyNode(Offset position) {
     Node n = Node(
         title: "NEW NODE",
@@ -294,7 +351,7 @@ class SkilitriState extends State<Skilitri> {
                                     exitSelectionMode()
                                   } else
                                     {
-                                      createEmptyNode(
+                                      onAddNode(
                                           screenToView(
                                               context, details.globalPosition))
                                     }
