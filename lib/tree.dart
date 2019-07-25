@@ -1,8 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
+//import 'package:audio_recorder/audio_recorder.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_sound/android_encoder.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+//import 'package:fluttery_audio/fluttery_audio.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:video_player/video_player.dart';
 
 class Tree {
   Set<Node> nodes = {};
@@ -49,7 +56,7 @@ class Tree {
   Map<String, dynamic> toJson() {
     _rearrangeIds();
     return {
-      'nodes': nodes.toList()
+      'nodes': nodes.map((f) => f.toJson()).toList()
     };
   }
 }
@@ -192,13 +199,13 @@ class Node {
                 color: Colors.black26
             )
           ],
-          //borderRadius: BorderRadius.all(Radius.circular(10.0))
+          borderRadius: BorderRadius.all(Radius.circular(10.0))
       ),
       child: Center(
         widthFactor: 1.0,
           heightFactor: 1.0,
           child: Container(
-            padding: EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(16.0).copyWith(top: 32.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
@@ -299,11 +306,12 @@ abstract class NodeBody {
     switch(json['type']) {
       case 'demo':
         return DemoBody.fromJson(content);
-      case 'score':
+      case ScoreBody.TYPENAME:
         return ScoreBody.fromJson(content);
+      case MediaBody.TYPENAME:
+        return MediaBody.fromJson(content);
     }
     print('UNKNOWN NODE TYPE "' + json['type'] + '"');
-    return DemoBody();
   }
   
   void _init(Node node) {
@@ -373,6 +381,7 @@ class DemoBody extends NodeBody {
 class ScoreBody extends NodeBody {
   int score;
   List<DateTime> updoots;
+  static const TYPENAME = "score";
 
   ScoreBody({int score = 0}) : super() {
     this.score = score;
@@ -433,7 +442,7 @@ class ScoreBody extends NodeBody {
 
   @override
   String getTypeId() {
-    return "score";
+    return TYPENAME;
   }
 
   Duration getStudyDuration() {
@@ -539,6 +548,7 @@ class ScoreBody extends NodeBody {
 }
 
 class MediaBody extends NodeBody {
+  static const TYPENAME = "media";
   List<MediaItem> items;
 
   MediaBody() : super() {
@@ -554,9 +564,12 @@ class MediaBody extends NodeBody {
         padding: EdgeInsets.all(4.0),
         children: items.map((mi) =>
             ListTile(
-              title: Text("ähhh..."),
-              onTap: () => {
-                // TODO: display media
+              title: mi.getInfoPreview(context, notifier),
+              onTap: () =>
+              {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (ctx) => MediaPost(item: mi),
+                ))
               },
               trailing: IconButton(
                 onPressed: () => {
@@ -572,12 +585,14 @@ class MediaBody extends NodeBody {
 
   @override
   String getTypeId() {
-    return "media";
+    return TYPENAME;
   }
 
-  Future getImage() async {
-    var image = await ImagePicker.pickImage(source: ImageSource.camera);
-    items.add(ImageItem(image));
+  void addItem(MediaItem item, BuildContext context) {
+    items.add(item);
+    Navigator.push(context, MaterialPageRoute(
+      builder: (ctx) => MediaPost(item: item),
+    ));
   }
 
   void showSelection(BuildContext context) {
@@ -592,12 +607,20 @@ class MediaBody extends NodeBody {
                 children: <Widget>[
                   IconButton(
                     icon: Icon(Icons.photo_camera),
-                    onPressed: () => getImage()
+                    onPressed: () => {
+                      addItem(ImagesItem.throughUser(ImageSource.camera, context), context)
+                    }
+                  ),
+                  IconButton(
+                      icon: Icon(Icons.photo),
+                      onPressed: () => {
+                        addItem(ImagesItem.throughUser(ImageSource.gallery, context), context)
+                      }
                   ),
                   IconButton(
                     icon: Icon(Icons.mic),
                     onPressed: () => {
-
+                      addItem(AudioItem.throughUser(context), context)
                     },
                   )
                 ],
@@ -631,8 +654,7 @@ class MediaBody extends NodeBody {
   }
 
   static List<MediaItem> loadItems(List<dynamic> json) {
-    // TODO
-    print("todo und so");
+    return json.map((it) => MediaItem._decipher(it)).toList();
   }
 
   MediaBody.fromJson(Map<String, dynamic> json)
@@ -645,51 +667,380 @@ class MediaBody extends NodeBody {
 }
 
 abstract class MediaItem {
+  String comment;
+  //double rating = 0.0;
   DateTime creationDate;
-  File file;
 
-  MediaItem(this.file, [this.creationDate]) {
+  MediaItem([this.creationDate]) {
     if (creationDate == null) {
       creationDate = DateTime.now();
     }
   }
 
-  MediaItem._js(json) : creationDate = DateTime.fromMillisecondsSinceEpoch(json['created']), file = json['path'];
+  MediaItem._js(json)
+      : creationDate = DateTime.fromMillisecondsSinceEpoch(json['created']),
+        //file = File(json['path']),
+        comment = json['comment'];
+        //rating = json['rating'];
+  
+  Map<String, dynamic> _addSpecifics();
+  Widget getPostPreview(BuildContext context, ValueNotifier notif);
+  Widget getInfoPreview(BuildContext context, ValueNotifier notif);
+  String _getType();
+  DateTime getLastModified();
 
   static MediaItem _decipher(Map<String, dynamic> json) {
     switch (json['type']) {
-      case ImageItem.TYPENAME: return ImageItem.fromJson(json);
+      case ImagesItem.TYPENAME: return ImagesItem.fromJson(json);
     }
     print("error? no media item created from json");
   }
-
-  String _getType();
-  String _getPath();
 
   Map<String, dynamic> toJson() =>
       {
         'type': _getType(),
         'created': creationDate.millisecondsSinceEpoch,
-        'path': _getPath()
-      };
+        'comment': comment,
+        //'rating': rating,
+      }..addAll(_addSpecifics());
 }
-class ImageItem extends MediaItem {
-  static const String TYPENAME = "image";
 
-  ImageItem(File file, [DateTime creationDate]) : super(file, creationDate);
+abstract class SingleMediaItem extends MediaItem {
+  File file;
 
-  ImageItem.fromJson(Map<String, dynamic> json) : super._js(json);
+  SingleMediaItem(this.file, [DateTime created]) : super(created);
+
+  //SingleMediaItem.fromJson(Map<String, dynamic> json) : super._js(json);
 
   @override
-  String _getPath() {
-    return file.path;
+  DateTime getLastModified() {
+    return file.lastModifiedSync();
+  }
+
+  @override
+  Map<String, dynamic> _addSpecifics() => {
+    'path': file.path
+  };
+}
+
+class VideoItem extends SingleMediaItem {
+  static const String TYPENAME = "video";
+
+  VideoItem(File file) : super(file);
+
+  VideoItem.throughUser(ImageSource source, BuildContext context) : super(null) {
+    recVideo(source, context, null);
   }
 
   @override
   String _getType() {
     return TYPENAME;
   }
+
+  Future recVideo(ImageSource source, BuildContext context, ValueNotifier notif) async {
+    var video = await ImagePicker.pickVideo(source: source);
+    Navigator.pop(context);
+    if (video != null) {
+      file = video;
+      if (notif != null) {
+        notif.value++;
+      }
+    }
+  }
+
+  VideoPlayerController controller;
+
+  @override
+  Widget getInfoPreview(BuildContext context, ValueNotifier notif) {
+    return null;
+  }
+
+  @override
+  Widget getPostPreview(BuildContext context, ValueNotifier notif) {
+    if (controller == null) {
+      controller = VideoPlayerController.file(file)..initialize().then((_) => notif.value++);
+    }
+
+    return controller.value.initialized ? AspectRatio(
+      aspectRatio: controller.value.aspectRatio,
+      child: VideoPlayer(
+        controller
+      )
+    ) : Container();
+  }
+
 }
+
+class AudioItem extends SingleMediaItem {
+  static const String TYPENAME = "audio";
+
+  AudioItem(File file) : super(file);
+
+  AudioItem.throughUser(BuildContext context) : super(null) {
+    recAudio(context);
+  }
+
+  Future recAudio(BuildContext context) async {
+    //bool hasPermissions = await AudioRecorder.hasPermissions;
+    //final directory = await getApplicationDocumentsDirectory();
+    final directory = Directory("/storage/emulated/0/Android/data/me.fellowhead.skilitri/files");
+
+    FlutterSound flutterSound = FlutterSound();
+    String path = await flutterSound.startRecorder(null, androidEncoder: AndroidEncoder.AMR_WB);
+
+//    await AudioRecorder.start(path: '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.aac',
+//        audioOutputFormat: AudioOutputFormat.AAC);
+
+    showDialog(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text("Recording audio..."),
+            content: Column(
+              children: <Widget>[
+                FlatButton(
+                    onPressed: () =>
+                    {
+//                      AudioRecorder.stop().then((rec) =>
+//                      {
+//                        file = File(rec.path),
+//                        Navigator.pop(ctx)
+//                      })
+                      flutterSound.stopRecorder().then((s) => {
+                        print("Stopped recorder... $s")
+                      })
+                    },
+                    child: Text("Stop")
+                )
+              ],
+            ),
+          );
+        }
+    );
+
+//    Fluttertoast.showToast(
+//      msg: "Added media",
+//      toastLength: Toast.LENGTH_SHORT,
+//      gravity: ToastGravity.BOTTOM,
+//      backgroundColor: Color(0x60000000),
+//      timeInSecForIos: 1,
+//    );
+  }
+
+  @override
+  String _getType() {
+    return TYPENAME;
+  }
+
+  bool isPlaying() {
+    //return player.state == AudioPlayerState.PLAYING;
+    return true;
+  }
+
+  @override
+  Widget getInfoPreview(BuildContext context, ValueNotifier notif) {
+    //print(player.state);
+
+//    return Audio(
+//      audioUrl: "http://techslides.com/demos/samples/sample.aac",
+//      playbackState: PlaybackState.playing,
+//      child: Container(
+//          height: 25,
+//          child: Row(
+//            children: <Widget>[
+//              IconButton(
+//                onPressed: () => {
+////                if (isPlaying()) {
+////                  player.stop()
+////                } else {
+////                  player.preload(Uri.file(file.path).toString()).then((l) => {
+////                    player.stop().then((uff) => {
+////                      player.play(Uri.file(file.path).toString())
+////                    })
+////                  }),
+////                },
+//                  notif.value++
+//                },
+//                icon: Icon(isPlaying() ? Icons.pause : Icons.play_arrow),
+//              )
+//            ],
+//          )
+//      ),
+//    );
+    return null;
+  }
+
+  @override
+  Widget getPostPreview(BuildContext context, ValueNotifier notif) {
+    // TODO: implement getPostPreview
+    return null;
+  }
+}
+
+class ImagesItem extends MediaItem {
+  static const String TYPENAME = "images";
+  List<File> files;
+
+  ImagesItem(this.files) : super();
+
+  ImagesItem.throughUser(ImageSource source, BuildContext context) : super() {
+    files = List<File>();
+    getImage(source, context, null);
+  }
+
+  ImagesItem.fromJson(Map<String, dynamic> json)
+      : files = List<File>.from(json['paths'].map((f) => File(f))),
+        super._js(json);
+
+  @override
+  String _getType() {
+    return TYPENAME;
+  }
+
+  @override
+  Map<String, dynamic> _addSpecifics() =>
+      {
+        'paths': files.map((f) => f.path).toList()
+      };
+
+  Future getImage(ImageSource source, BuildContext context, ValueNotifier notif) async {
+    var image = await ImagePicker.pickImage(source: source);
+    Navigator.pop(context);
+    if (image != null) {
+      files.add(image);
+      if (notif != null) {
+        notif.value++;
+      }
+    }
+  }
+
+  @override
+  Widget getPostPreview(BuildContext context, ValueNotifier notif) {
+    double height = 200;
+    //ValueNotifier nf = ValueNotifier(0);
+    bool _canDeleteSource = false;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: files.map((f) =>
+        // ignore: unnecessary_cast
+        GestureDetector(
+          child: Padding(child: Image.file(f, height: height), padding: EdgeInsets.only(right: 10.0)),
+          onLongPressStart: (details) =>
+          {
+            _canDeleteSource = f.path.contains("skilitri"),
+            Feedback.forLongPress(context),
+            showDialog(
+                context: context,
+                builder: (ctx) {
+                  return AlertDialog(
+                    title: Text("Remove image..."),
+//                    content: CheckboxListTile(
+//                        value: _deleteSelectionCompletely,
+//                        onChanged: (v) => {
+//                          _deleteSelectionCompletely = v,
+//
+//                        },
+//                        title: Text("Remove image from device")
+//                    ),
+                    content: _canDeleteSource ? FlatButton(
+                      child: Text("Delete forever (pls don't)"),
+                      onPressed: () =>
+                      {
+                        files.remove(f),
+                        f.delete(),
+                        Navigator.pop(ctx)
+                      },
+                    ) : null,
+                    actions: <Widget>[
+                      FlatButton(
+                        child: Text("Cancel"),
+                        onPressed: () =>
+                        {
+                          Navigator.pop(ctx)
+                        },
+                      ),
+                      FlatButton(
+                        child: Text("Remove"),
+                        onPressed: () =>
+                        {
+                          files.remove(f),
+//                          if (_deleteSelectionCompletely) {
+//                            f.delete()
+//                          },
+                          Navigator.pop(ctx)
+                        },
+                      ),
+                    ],
+                  );
+                }
+            )
+          },
+        ) as Widget).toList()
+          ..add(IconButton(
+            icon: Icon(Icons.add),
+            padding: EdgeInsets.all(height / 4),
+            onPressed: () =>
+            {
+              showDialog(
+                  context: context,
+                  builder: (ctx) {
+                    return AlertDialog(
+                      title: Text("Add photo from..."),
+                      content: Row(
+                        children: <Widget>[
+                          IconButton(
+                            icon: Icon(Icons.photo_camera),
+                            onPressed: () =>
+                            {
+                              getImage(ImageSource.camera, ctx, notif)
+                            },
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.photo),
+                            onPressed: () =>
+                            {
+                              getImage(ImageSource.gallery, ctx, notif)
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+              )
+            },
+          )),
+      ),
+    );
+  }
+
+  @override
+  Widget getInfoPreview(BuildContext context, ValueNotifier notif) {
+    return Container(
+      height: 50,
+      child: Row(
+        children: files.map((f) =>
+            Padding(
+                child: Image.file(f, height: 50),
+              padding: EdgeInsets.only(right: 5.0),
+            )
+        ).toList(),
+      )
+    );
+  }
+
+  @override
+  DateTime getLastModified() {
+    return (files.toList(growable: false)
+      ..sort((a,b) =>
+            b.lastModifiedSync().millisecondsSinceEpoch
+          - a.lastModifiedSync().millisecondsSinceEpoch
+      )).first.lastModifiedSync();
+  }
+}
+
+
 
 class NodeInfo extends StatefulWidget {
   final Node node;
@@ -729,7 +1080,7 @@ class NodeInfoState extends State<NodeInfo> {
                         children: <Widget>[
                           TextField(
                               decoration: InputDecoration(
-                                  hintText: "Name the node..."
+                                  hintText: "Enter node name..."
                               ),
                               onChanged: (s) =>
                               {
@@ -749,6 +1100,94 @@ class NodeInfoState extends State<NodeInfo> {
                           ..add(widget.node.getChildrenInfo(context, widget.notif))
                     ),
                   ),
+                )
+            )
+        )
+    );
+  }
+}
+
+
+
+class MediaPost extends StatefulWidget {
+  final MediaItem item;
+  final ValueNotifier<int> notif = ValueNotifier(0);
+
+  MediaPost({Key key, @required this.item}) : super(key: key);
+
+  @override
+  State<StatefulWidget> createState() {
+    return MediaPostState();
+  }
+}
+
+class MediaPostState extends State<MediaPost> {
+  Timer timer;
+  TextEditingController cDescription;
+
+  @override
+  Widget build(BuildContext context) {
+    if (timer == null) {
+      timer = Timer.periodic(
+          Duration(seconds: 1), (Timer t) => widget.notif.value++);
+      cDescription = TextEditingController(text: widget.item.comment);
+    }
+
+    return Scaffold(
+        appBar: AppBar(
+          title: Text('Edit media item'),
+        ),
+        body: AnimatedBuilder(
+            animation: widget.notif, builder: (ctx, constraints) =>
+            Container(
+                child: Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                            child: Padding(
+                              padding: EdgeInsets.all(10.0),
+                              child: Column(
+                                  children: <Widget>[
+                                    Container(
+                                        child: widget.item.getPostPreview(
+                                            ctx, widget.notif)
+                                    ),
+                                    TextField(
+                                        decoration: InputDecoration(
+                                            hintText: "Add a comment..."
+                                        ),
+                                        onChanged: (s) =>
+                                        {
+                                          widget.item.comment = s
+                                        },
+                                        controller: cDescription
+                                    ),
+//                                    Slider.adaptive(value: widget.item.rating,
+//                                        onChanged: (v) =>
+//                                        {
+//                                          widget.item.rating = v,
+//                                          widget.notif.value++
+//                                        })
+                                  ]
+                              ),
+                            )
+                        ),
+                      ),
+                      Container(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: <Widget>[
+                            FlatButton(
+                                onPressed: () =>
+                                {
+                                  Navigator.pop(context)
+                                },
+                                child: Text("OK")
+                            )
+                          ],
+                        ),
+                      )
+                    ]
                 )
             )
         )

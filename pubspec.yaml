@@ -28,6 +28,10 @@ dependencies:
   path_provider: ^0.4.1
   fluttertoast: ^3.1.0
   image_picker:
+  #audio_recorder:
+  #fluttery_audio:
+  flutter_sound:
+  video_player:
 
 dev_dependencies:
   flutter_test:

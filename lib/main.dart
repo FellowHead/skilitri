@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+//import 'package:fluttery_audio/fluttery_audio.dart';
 import 'package:skilitri/tree.dart';
 import 'package:matrix_gesture_detector/matrix_gesture_detector.dart';
 import 'package:path_provider/path_provider.dart';
@@ -107,11 +108,6 @@ class SkilitriState extends State<Skilitri> {
               },
               onDragStop()
             },
-            onPanDown: (yeah) => {
-              n.isDragged = true,
-              dragged = n
-            },
-            dragStartBehavior: DragStartBehavior.down,
             onLongPressStart: (details) =>
             {
               Feedback.forLongPress(context),
@@ -121,6 +117,9 @@ class SkilitriState extends State<Skilitri> {
                 shouldRotate: false,
                 shouldScale: false,
                 onMatrixUpdate: (m, tm, sm, rm) {
+                  n.isDragged = true;
+                  dragged = n;
+
                   Matrix4 change = tm;
                   //print(MatrixGestureDetector.decomposeToValues(matrix));
                   double sc = MatrixGestureDetector
@@ -245,7 +244,9 @@ class SkilitriState extends State<Skilitri> {
   _read() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/baum.fwd');
+      //final file = File('${directory.path}/tree.fwd');
+      //final file = File('${directory.path}/baum.fwd');
+      final file = File('${directory.path}/jetztnochbesser.fwd');
       String text = await file.readAsString();
       print(text);
       setState(() => {
@@ -258,7 +259,7 @@ class SkilitriState extends State<Skilitri> {
 
   _save() async {
     final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/baum.fwd');
+    final file = File('${directory.path}/jetztnochbesser.fwd');
     final text = jsonEncode(tree.toJson());
     print(text);
     await file.writeAsString(text);
@@ -280,8 +281,6 @@ class SkilitriState extends State<Skilitri> {
 
   @override
   Widget build(BuildContext context) {
-    //return buildSmol();
-
     if (tree == null) {
       resetTree();
     }
