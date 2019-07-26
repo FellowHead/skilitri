@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
+import 'package:flutter/animation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 //import 'package:fluttery_audio/fluttery_audio.dart';
@@ -81,42 +83,15 @@ class SkilitriState extends State<Skilitri> {
       ..addNode("Nother Node", Offset(0, -200));
   }
 
-  Widget buildNode(Node n) {
+  Widget buildNode(Node n, Function onTap, Function onLongPress, SelectionType sel) {
     Matrix4 ma = matrix.clone();
     ma.translate(n.position.dx, -n.position.dy);
 
     return Transform(
         transform: ma,
         child: GestureDetector(
-            onTapUp: (details) =>
-            {
-              //print("onTapUp on " + n.toString()),
-              if (inSelectionMode) {
-                if (selection.contains(n)) {
-                  if (selection.length == 1) {
-                    exitSelectionMode()
-                  } else
-                    {
-                      selection.remove(n),
-                      if (active == n) {
-                        active = null
-                      }
-                    }
-                } else
-                  {
-                    select(n, false)
-                  },
-                notifier.value++
-              } else {
-                n.displayInfo(context)
-              },
-              onDragStop()
-            },
-            onLongPressStart: (details) =>
-            {
-              Feedback.forLongPress(context),
-              select(n, true)
-            },
+            onTapUp: (details) => onTap(),
+            onLongPressStart: (details) => onLongPress(),
             child: MatrixGestureDetector(
                 shouldRotate: false,
                 shouldScale: false,
@@ -138,7 +113,7 @@ class SkilitriState extends State<Skilitri> {
                   notifier.value++;
                 },
                 child: Center(
-                  child: n.render(context, notifier, getSelectionType(n)),
+                  child: n.render(context, notifier, sel),
                 )
             )
         )
@@ -150,9 +125,8 @@ class SkilitriState extends State<Skilitri> {
       return SelectionType.Focused;
     } else if (selection.contains(n)) {
       return SelectionType.Selected;
-    } else {
-      return SelectionType.None;
     }
+    return SelectionType.None;
   }
 
   Offset screenToView(BuildContext ctx, Offset sc) {
@@ -250,6 +224,81 @@ class SkilitriState extends State<Skilitri> {
     return Future<bool>.value(false);
   }
 
+  Widget buildViewport(Function(Node) onTap, Function(Node) onLongPress, SelectionType Function(Node) selectionType,
+      Color Function(Node, Node) lineColor, {void Function() onUpdate, List<ValueNotifier> arr}) {
+    if (arr != null) {
+      arr.clear();
+      arr.add(notifier);
+    }
+    if (onUpdate != null) {
+      notifier.addListener(onUpdate);
+    }
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerUp: (lol) =>
+      {
+        onDragStop()
+      },
+      child: LayoutBuilder(
+        builder: (ctx, constraints) {
+          return MatrixGestureDetector(
+              onMatrixUpdate: (m, tm, sm, rm) {
+                matrix =
+                    MatrixGestureDetector.compose(
+                        matrix, tm, sm, null);
+                notifier.value++;
+              },
+              child: GestureDetector(
+                onLongPressStart: (details) =>
+                {
+                  Feedback.forLongPress(context),
+                  if (inSelectionMode) {
+                    exitSelectionMode()
+                  } else
+                    {
+                      onAddNode(
+                          screenToView(
+                              context, details.globalPosition))
+                    }
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    alignment: Alignment.topLeft,
+                    color: Theme
+                        .of(context)
+                        .backgroundColor,
+                    child: AnimatedBuilder(
+                        animation: notifier,
+                        builder: (ctx, child) {
+                          return Container(
+                              width: double.infinity,
+                              height: double.infinity,
+                              child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    buildCanvas(lineColor),
+                                    Stack(
+                                      children: tree
+                                          .nodes
+                                          .map((n) =>
+                                          buildNode(n, () => onTap(n), () => onLongPress(n), selectionType(n))
+                                      ).toList(),
+                                    )
+                                  ]
+                              )
+                          );
+                        }
+                    )
+                ),
+              )
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (tree == null) {
@@ -272,7 +321,7 @@ class SkilitriState extends State<Skilitri> {
                       color: Theme.of(context).primaryColor
                     ),
                   ),
-                ]..addAll(tree.getSortedAchievements().map((a) => a.render(context)).toList()),
+                ]..addAll(tree.getSortedAchievements().map((a) => a.render(context, this)).toList()),
               )
             ),
             body: Column(
@@ -311,70 +360,36 @@ class SkilitriState extends State<Skilitri> {
                     height: 50,
                   ),
                   Expanded(
-                    child: Listener(
-                      behavior: HitTestBehavior.translucent,
-                      onPointerUp: (lol) =>
-                      {
-                        onDragStop()
+                    child: buildViewport((n) => {
+                      if (inSelectionMode) {
+                        if (selection.contains(n)) {
+                          if (selection.length == 1) {
+                            exitSelectionMode()
+                          } else
+                            {
+                              selection.remove(n),
+                              if (active == n) {
+                                active = null
+                              }
+                            }
+                        } else
+                          {
+                            select(n, false)
+                          },
+                        notifier.value++
+                      } else {
+                        n.displayInfo(context)
                       },
-                      child: LayoutBuilder(
-                        builder: (ctx, constraints) {
-                          return MatrixGestureDetector(
-                              onMatrixUpdate: (m, tm, sm, rm) {
-                                matrix =
-                                    MatrixGestureDetector.compose(
-                                        matrix, tm, sm, null);
-                                notifier.value++;
-                              },
-                              child: GestureDetector(
-                                onLongPressStart: (details) =>
-                                {
-                                  Feedback.forLongPress(context),
-                                  if (inSelectionMode) {
-                                    exitSelectionMode()
-                                  } else
-                                    {
-                                      onAddNode(
-                                          screenToView(
-                                              context, details.globalPosition))
-                                    }
-                                },
-                                behavior: HitTestBehavior.opaque,
-                                child: Container(
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    alignment: Alignment.topLeft,
-                                    color: Theme
-                                        .of(context)
-                                        .backgroundColor,
-                                    child: AnimatedBuilder(
-                                        animation: notifier,
-                                        builder: (ctx, child) {
-                                          return Container(
-                                              width: double.infinity,
-                                              height: double.infinity,
-                                              child: Stack(
-                                                  fit: StackFit.expand,
-                                                  children: [
-                                                    buildCanvas(),
-                                                    Stack(
-                                                      children: tree
-                                                          .nodes
-                                                          .map((n) =>
-                                                          buildNode(n)
-                                                      ).toList(),
-                                                    )
-                                                  ]
-                                              )
-                                          );
-                                        }
-                                    )
-                                ),
-                              )
-                          );
-                        },
-                      ),
-                    ),
+                      onDragStop()
+                    }, (n) => {
+                      Feedback.forLongPress(context),
+                      select(n, true)
+                    },
+                        getSelectionType,
+                        (n, child) {
+                          return Colors.black38;
+                        }
+                    )
                   ),
                   // SELECTION MODE BAR
                   AnimatedContainer(
@@ -476,7 +491,7 @@ class SkilitriState extends State<Skilitri> {
             ),
           floatingActionButton: FloatingActionButton(
             onPressed: () => {
-              tree.addAchievementThroughUser(context)
+              tree.addAchievementThroughUser(context, this)
             },
             child: Icon(Icons.library_add),
           ),
@@ -525,12 +540,12 @@ class SkilitriState extends State<Skilitri> {
     );
   }
 
-  Widget buildCanvas() {
+  Widget buildCanvas(Color Function(Node, Node) lineColor) {
     return Transform(
       transform: matrix,
       child: Center(
         child: CustomPaint(
-          painter: ShapesPainter(tree),
+          painter: ShapesPainter(tree, lineColor),
         ),
       ),
     );
@@ -539,23 +554,24 @@ class SkilitriState extends State<Skilitri> {
 
 class ShapesPainter extends CustomPainter {
   SkillTree root;
+  Color Function(Node, Node) lineColor;
 
-  ShapesPainter(SkillTree root) {
-    this.root = root;
-  }
+  ShapesPainter(this.root, this.lineColor);
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
-    paint.color = Colors.black.withOpacity(0.25);
     paint.strokeWidth = 5;
 
     for (Node n in root.nodes) {
-      for (Node c in n.children) {
-        Offset start = c.position.scale(1, -1);
-        Offset end = n.position.scale(1, -1);
-        canvas.drawLine(start, end, paint);
-        canvas.drawCircle(Offset.lerp(start, end, 0.7), 25, paint);
+      for (Child c in n.children) {
+        if (c is Node) {
+          paint.color = lineColor(n, c);
+          Offset start = c.position.scale(1, -1);
+          Offset end = n.position.scale(1, -1);
+          canvas.drawLine(start, end, paint);
+          canvas.drawCircle(Offset.lerp(start, end, 0.7), 25, paint);
+        }
       }
     }
   }

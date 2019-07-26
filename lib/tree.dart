@@ -10,7 +10,10 @@ import 'package:fluttertoast/fluttertoast.dart';
 //import 'package:fluttery_audio/fluttery_audio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:skilitri/main.dart';
 import 'package:video_player/video_player.dart';
+
+import 'achievements.dart';
 
 class Achievement extends TreeNeeder with Child {
   String comment;
@@ -33,7 +36,7 @@ class Achievement extends TreeNeeder with Child {
             .toList(),
         super.fromJson(json, tree);
 
-  ListTile render(BuildContext context) {
+  ListTile render(BuildContext context, SkilitriState skilitri) {
     return ListTile(
       title: Column(
         children: <Widget>[
@@ -48,10 +51,15 @@ class Achievement extends TreeNeeder with Child {
       onTap: () =>
       {
         Navigator.push(context, MaterialPageRoute(
-            builder: (ctx) => EditAchievement(this)
+            builder: (ctx) => EditAchievement(this, skilitri)
         ))
       },
     );
+  }
+
+  @override
+  String toString() {
+    return "Achievement($comment)";
   }
 }
 
@@ -69,11 +77,11 @@ class SkillTree {
 
   SkillTree();
 
-  Future<Achievement> addAchievementThroughUser(BuildContext context) async {
+  Future<Achievement> addAchievementThroughUser(BuildContext context, SkilitriState skilitri) async {
     Achievement ach = Achievement(this);
     dynamic result = await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => EditAchievement(ach))
+        MaterialPageRoute(builder: (context) => EditAchievement(ach, skilitri))
     );
     if (result == true) {
       achievements.add(ach);
@@ -97,7 +105,7 @@ class SkillTree {
 
     _childMap.forEach((ch, childrenIDs) {
       childrenIDs.forEach((i) => {
-        (ch as Parent).addChild(_ids[i])
+        ch.addChild(_ids[i])
       });
     });
   }
@@ -164,6 +172,7 @@ class TreeNeeder {
 
   int _getIdAsChild() {
     return tree._ids.entries
+        // ignore: unrelated_type_equality_checks
         .firstWhere((entry) => entry.value == this)
         .key;
   }
@@ -176,8 +185,8 @@ class TreeNeeder {
 
   Map<String, dynamic> toJson() =>
       {
+        'id': _getIdAsChild(),
         'created': creationDate.millisecondsSinceEpoch,
-        'id': _getIdAsChild()
       };
 }
 
@@ -223,6 +232,9 @@ class Parent extends TreeNeeder {
 
 class Child { // possible child of multiple things
   Set<Parent> _parents = {};
+  
+  bool hasParent(Parent p) => _parents.contains(p);
+  int get numParents => _parents.length;
 
   Set<Parent> getAscendants() {
     Set<Parent> out = Set();
@@ -338,8 +350,7 @@ class Node extends Parent with Child { // aka Skill
 
   void displayInfo(BuildContext context) {
     Navigator.push(context, MaterialPageRoute(
-        builder: (ctx) => NodeInfo(node: this),
-        settings: RouteSettings()
+        builder: (ctx) => NodeInfo(node: this)
     ));
   }
 
@@ -352,15 +363,20 @@ class Node extends Parent with Child { // aka Skill
 
   void remove(bool keepChildren) {
     if (keepChildren) {
-      for (Node n in children.toSet()) {
+      for (Child c in children.toSet()) {
         for (Node p in _parents) {
-          p.addChild(n);
+          p.addChild(c);
         }
       }
     } else {
-      for (Node n in children.toSet()) {
-        n.remove(false);
+      for (Child c in children.toSet()) {
+        if (c is Node) {
+          c.remove(false);
+        }
       }
+    }
+    for (Child c in children.toSet()) {
+      c._parents.remove(this);
     }
     children = {};
     for (Node p in _parents) {
@@ -594,7 +610,7 @@ class ImageItem extends FileMediaItem {
 
   ImageItem(File file) : super(file);
 
-  ImageItem.throughUser(BuildContext context) : super(null) {
+  ImageItem.throughUser(BuildContext context, {void Function(ImageItem) whenDone}) : super(null) {
     showDialog(
         context: context,
         builder: (ctx) {
@@ -603,14 +619,14 @@ class ImageItem extends FileMediaItem {
             children: <Widget>[
               IconButton(
                 onPressed: () => {
-                  getImage(ImageSource.camera, context, null),
+                  getImage(ImageSource.camera, context, null).then(whenDone),
                   Navigator.pop(ctx),
                 },
                 icon: Icon(Icons.camera),
               ),
               IconButton(
                 onPressed: () => {
-                  getImage(ImageSource.gallery, context, null),
+                  getImage(ImageSource.gallery, context, null).then(whenDone),
                   Navigator.pop(ctx),
                 },
                 icon: Icon(Icons.photo_library),
@@ -628,14 +644,16 @@ class ImageItem extends FileMediaItem {
     return TYPENAME;
   }
 
-  Future getImage(ImageSource source, BuildContext context, ValueNotifier notif) async {
+  Future<ImageItem> getImage(ImageSource source, BuildContext context, ValueNotifier notif) async {
     var image = await ImagePicker.pickImage(source: source);
     if (image != null) {
       file = image;
       if (notif != null) {
         notif.value++;
       }
+      return this;
     }
+    return null;
   }
 
   @override
@@ -708,91 +726,5 @@ class NodeInfoState extends State<NodeInfo> {
             )
         )
     );
-  }
-}
-
-class EditAchievement extends StatefulWidget {
-  final Achievement achievement;
-
-  EditAchievement(this.achievement);
-
-  @override
-  _EditAchievementState createState() => _EditAchievementState();
-}
-
-class _EditAchievementState extends State<EditAchievement> {
-  TextEditingController _comment;
-
-  @override
-  initState() {
-    super.initState();
-    _comment = TextEditingController(text: widget.achievement.comment)..addListener(() => {
-
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Edit achievement"),
-      ),
-      body: Container(
-        child: SingleChildScrollView(
-          child: Column(
-            children: <Widget>[
-              TextField(
-                keyboardType: TextInputType.multiline,
-                maxLines: null,
-                controller: _comment,
-                onChanged: (s) => {
-                  widget.achievement.comment = s
-                },
-              ),
-              //buildMediaCol(),
-              Row(
-                children: <Widget>[
-                  IconButton(
-                    onPressed: () => {
-                      widget.achievement.mediaItems.add(ImageItem.throughUser(context))
-                    },
-                    icon: Icon(Icons.image),
-                  ),
-                  IconButton(
-                    onPressed: () => {
-                      //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
-                    },
-                    icon: Icon(Icons.videocam),
-                  ),
-                  IconButton(
-                    onPressed: () => {
-                      //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
-                    },
-                    icon: Icon(Icons.mic),
-                  ),
-                  IconButton(
-                    onPressed: () => {
-                      //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
-                    },
-                    icon: Icon(Icons.insert_drive_file),
-                  )
-                ],
-              )
-            ],
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => {
-          print("Done editing that shit"),
-          Navigator.pop(context, true)
-        },
-        child: Icon(Icons.done),
-      ),
-    );
-  }
-
-  Widget buildMediaCol() { //TODO
-    return null;
   }
 }
