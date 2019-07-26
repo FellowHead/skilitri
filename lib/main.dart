@@ -38,7 +38,7 @@ class Skilitri extends StatefulWidget {
 
 class SkilitriState extends State<Skilitri> {
   bool check = false;
-  Tree tree;
+  SkillTree tree;
   Matrix4 matrix = Matrix4.identity();
   ValueNotifier<int> notifier = ValueNotifier(0);
   bool inSelectionMode = false;
@@ -47,34 +47,38 @@ class SkilitriState extends State<Skilitri> {
   Node dragged;
 
   void resetTree() {
-    tree = Tree(
-        {
-          Node(
-              title: "Node",
-              position: Offset(0, 0),
-              body: DemoBody(),
-              children: {
-                Node(
-                    title: "Score Node #1",
-                    position: Offset(0, -100),
-                    body: ScoreBody(score: 100),
-                    children: {
-                      Node(
-                        title: "Score Node #2",
-                        position: Offset(-300, -200),
-                        body: ScoreBody(score: 5),
-                      ),
-                      Node(
-                        title: "Score Node #3",
-                        position: Offset(300, -200),
-                        body: ScoreBody(score: 63),
-                      )
-                    }
-                )
-              }
-          )
-        }
-    );
+//    tree = SkillTree(
+//        {
+//          Node(
+//              title: "Node",
+//              position: Offset(0, 0),
+//              body: DemoBody(),
+//              children: {
+//                Node(
+//                    title: "Score Node #1",
+//                    position: Offset(0, -100),
+//                    body: ScoreBody(score: 100),
+//                    children: {
+//                      Node(
+//                        title: "Score Node #2",
+//                        position: Offset(-300, -200),
+//                        body: ScoreBody(score: 5),
+//                      ),
+//                      Node(
+//                        title: "Score Node #3",
+//                        position: Offset(300, -200),
+//                        body: ScoreBody(score: 63),
+//                      )
+//                    }
+//                )
+//              }
+//          )
+//        }
+//    );
+
+    tree = SkillTree()
+      ..addNode("Node", Offset(0, 0))
+      ..addNode("Nother Node", Offset(0, -200));
   }
 
   Widget buildNode(Node n) {
@@ -186,57 +190,24 @@ class SkilitriState extends State<Skilitri> {
                 ),
                 controller: controller,
               ),
-              Center(
-                widthFactor: 1.0,
-                heightFactor: 1.0,
-                child: Row(
-                  children: <Widget>[
-                    IconButton(
-                      onPressed: () => {
-                        addNode(controller.text, ScoreBody(), position),
-                        Navigator.of(ctx).pop()
-                      },
-                      icon: Icon(Icons.score),
-                    ),
-                    IconButton(
-                      onPressed: () => {
-                        addNode(controller.text, MediaBody(), position),
-                        Navigator.of(ctx).pop()
-                      },
-                      icon: Icon(Icons.image),
-                    )
-                  ],
-                ),
-              ),
             ],
           ),
+          actions: <Widget>[
+            FlatButton(
+              child: Text("OK"),
+              onPressed: () => {
+                addNode(controller.text, position),
+                Navigator.pop(ctx)
+              },
+            )
+          ],
         );
       }
     );
   }
 
-  void addNode(String title, NodeBody body, Offset position) {
-    Node n = Node(
-        title: title,
-        position: position,
-        body: body
-    );
-    tree.nodes.add(n);
-    n.tree = tree;
-    select(n, true);
-  }
-
-  @deprecated
-  void createEmptyNode(Offset position) {
-    Node n = Node(
-        title: "NEW NODE",
-        position: position,
-        body: ScoreBody(score: 0)
-    );
-    tree.nodes.add(n);
-    n.tree = tree;
-    select(n, true);
-    //notifier.value++;
+  void addNode(String title, Offset position) {
+    select(tree.addNode(title, position), true);
   }
 
   // I/O STUFF
@@ -246,11 +217,11 @@ class SkilitriState extends State<Skilitri> {
       final directory = await getApplicationDocumentsDirectory();
       //final file = File('${directory.path}/tree.fwd');
       //final file = File('${directory.path}/baum.fwd');
-      final file = File('${directory.path}/jetztnochbesser.fwd');
+      final file = File('${directory.path}/uwu.fwd');
       String text = await file.readAsString();
       print(text);
       setState(() => {
-        tree = Tree.fromJson(jsonDecode(text))
+        tree = SkillTree.fromJson(jsonDecode(text))
       });
     } on FileSystemException {
       print("Can't read file");
@@ -259,7 +230,7 @@ class SkilitriState extends State<Skilitri> {
 
   _save() async {
     final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/jetztnochbesser.fwd');
+    final file = File('${directory.path}/uwu.fwd');
     final text = jsonEncode(tree.toJson());
     print(text);
     await file.writeAsString(text);
@@ -290,6 +261,19 @@ class SkilitriState extends State<Skilitri> {
         child: Scaffold(
             appBar: AppBar(
               title: Text('skilitri'),
+            ),
+            drawer: Drawer(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: <Widget>[
+                  DrawerHeader(
+                    child: Text("boi, look at deez achievements"),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor
+                    ),
+                  ),
+                ]..addAll(tree.getSortedAchievements().map((a) => a.render(context)).toList()),
+              )
             ),
             body: Column(
                 children: [
@@ -489,7 +473,13 @@ class SkilitriState extends State<Skilitri> {
                     height: inSelectionMode ? 50 : 0,
                   ),
                 ]
-            )
+            ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => {
+              tree.addAchievementThroughUser(context)
+            },
+            child: Icon(Icons.library_add),
+          ),
         )
     );
   }
@@ -548,9 +538,9 @@ class SkilitriState extends State<Skilitri> {
 }
 
 class ShapesPainter extends CustomPainter {
-  Tree root;
+  SkillTree root;
 
-  ShapesPainter(Tree root) {
+  ShapesPainter(SkillTree root) {
     this.root = root;
   }
 
