@@ -148,7 +148,7 @@ class SkilitriState extends State<Skilitri> {
     });
   }
 
-  void onAddNode(Offset position) {
+  void onAddNode(Offset position, {Node parent, Node child}) {
     var controller = TextEditingController();
 
     showDialog(
@@ -170,7 +170,7 @@ class SkilitriState extends State<Skilitri> {
             FlatButton(
               child: Text("OK"),
               onPressed: () => {
-                addNode(controller.text, position),
+                addNode(controller.text, position, parent: parent, child: child),
                 Navigator.pop(ctx)
               },
             )
@@ -180,8 +180,11 @@ class SkilitriState extends State<Skilitri> {
     );
   }
 
-  void addNode(String title, Offset position) {
-    select(tree.addNode(title, position), true);
+  void addNode(String title, Offset position, {Node parent, Node child}) {
+    Node nNode = tree.addNode(title, position);
+    if (parent != null) { nNode.addParent(parent); }
+    if (child != null) { nNode.addChild(child); }
+    select(nNode, true);
   }
 
   // I/O STUFF
@@ -376,7 +379,7 @@ class SkilitriState extends State<Skilitri> {
                           {
                             select(n, false)
                           },
-                        notifier.value++
+                        setState(() => {})
                       } else {
                         n.displayInfo(context)
                       },
@@ -405,16 +408,6 @@ class SkilitriState extends State<Skilitri> {
                     ),
                     child: Row(
                       children: <Widget>[
-                        MaterialButton(
-                          onPressed: () =>
-                          {
-                            setState(() =>
-                            {
-                              exitSelectionMode()
-                            })
-                          },
-                          child: Text('Exit'),
-                        ),
                         IconButton(
                           onPressed: () =>
                           {
@@ -428,6 +421,32 @@ class SkilitriState extends State<Skilitri> {
                           },
                           icon: Icon(
                               Icons.delete
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: selection.length == 2 &&
+                              (selection.last.hasParent(selection.first)
+                              || selection.first.hasParent(selection.last)) ? () =>
+                          {
+                            setState(() =>
+                            {
+                              if (selection.last.hasParent(selection.first)) {
+                                selection.last.unlinkParent(selection.first),
+                                onAddNode((selection.first.position + selection.last.position) / 2,
+                                    parent: selection.first,
+                                    child: selection.last
+                                )
+                              } else {
+                                selection.first.unlinkParent(selection.last),
+                                onAddNode((selection.first.position + selection.last.position) / 2,
+                                    parent: selection.last,
+                                    child: selection.first
+                                )
+                              },
+                            })
+                          } : null,
+                          icon: Icon(
+                              Icons.add
                           ),
                         ),
                         IconButton(
