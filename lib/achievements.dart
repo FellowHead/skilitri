@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:skilitri/tree.dart';
 
@@ -26,90 +27,101 @@ class _EditAchievementState extends State<EditAchievement> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Edit achievement"),
-      ),
-      body: Container(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: <Widget>[
-                TextField(
-                  keyboardType: TextInputType.multiline,
-                  maxLines: null,
-                  controller: _comment,
-                  onChanged: (s) => {
-                    widget.achievement.comment = s
-                  },
-                ),
-                Divider(),
-                buildMediaCol(),
-                Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    IconButton(
-                      onPressed: () => {
-                        ImageItem.throughUser(context, whenDone: (ii) => {
-                          if (ii != null) {
-                            widget.achievement.mediaItems.add(ii),
-                            setState(() => {})
-                          },
-                        })
-                      },
-                      icon: Icon(Icons.image),
-                    ),
-                    IconButton(
-                      onPressed: () => {
-                        //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
-                      },
-                      icon: Icon(Icons.videocam),
-                    ),
-                    IconButton(
-                      onPressed: () => {
-                        //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
-                      },
-                      icon: Icon(Icons.mic),
-                    ),
-                    IconButton(
-                      onPressed: () => {
-                        //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
-                      },
-                      icon: Icon(Icons.insert_drive_file),
-                    )
-                  ],
-                )
-              ],
+    return WillPopScope(
+      onWillPop: () {
+        if (widget.achievement.comment == null) {
+          print("deleting because of no comment");
+          widget.achievement.remove();
+          Navigator.pop(context, true);
+        } else {
+          Navigator.pop(context);
+        }
+        return Future<bool>.value(false);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text("Edit achievement"),
+        ),
+        body: Container(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: <Widget>[
+                  TextField(
+                    keyboardType: TextInputType.multiline,
+                    maxLines: null,
+                    controller: _comment,
+                    onChanged: (s) => {
+                      widget.achievement.comment = s
+                    },
+                  ),
+                  Divider(),
+                  buildMediaCol(),
+                  Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      IconButton(
+                        onPressed: () => {
+                          ImageItem.throughUser(context, whenDone: (ii) => {
+                            if (ii != null) {
+                              widget.achievement.mediaItems.add(ii),
+                              setState(() => {})
+                            },
+                          })
+                        },
+                        icon: Icon(Icons.image),
+                      ),
+                      IconButton(
+                        onPressed: () => {
+                          //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
+                        },
+                        icon: Icon(Icons.videocam),
+                      ),
+                      IconButton(
+                        onPressed: () => {
+                          //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
+                        },
+                        icon: Icon(Icons.mic),
+                      ),
+                      IconButton(
+                        onPressed: () => {
+                          //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
+                        },
+                        icon: Icon(Icons.insert_drive_file),
+                      )
+                    ],
+                  )
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      persistentFooterButtons: <Widget>[
-        FlatButton(
-          shape: StadiumBorder(),
-          child: Row(
-            children: <Widget>[
-              Icon(Icons.link),
-              Text("${widget.achievement.getAscendants().length} (${widget.achievement.numParents}) connections")
-            ],
+        persistentFooterButtons: <Widget>[
+          FlatButton(
+            shape: StadiumBorder(),
+            child: Row(
+              children: <Widget>[
+                Icon(Icons.link),
+                Text("${widget.achievement.getAscendants().length} (${widget.achievement.numParents}) connections")
+              ],
+            ),
+            onPressed: () => {
+              Navigator.push(context, MaterialPageRoute(
+                  builder: (ctx) => LinkAchievement(achievement: widget.achievement, skilitri: widget.skilitri)
+              ))
+            },
           ),
-          onPressed: () => {
-            Navigator.push(context, MaterialPageRoute(
-                builder: (ctx) => LinkAchievement(achievement: widget.achievement, skilitri: widget.skilitri)
-            ))
-          },
-        ),
-        FlatButton(
-          shape: StadiumBorder(),
-          child: Text("Delete"),
-          onPressed: () => {
-            widget.achievement.remove(),
-            Navigator.pop(context, false)
-          },
-        ),
-      ],
+          FlatButton(
+            shape: StadiumBorder(),
+            child: Text("Delete"),
+            onPressed: () => {
+              widget.achievement.remove(),
+              Navigator.pop(context, true)
+            },
+          ),
+        ],
 //      floatingActionButton: FloatingActionButton.extended(
 //        label: Text("${widget.achievement.getAscendants().length} (${widget.achievement.numParents}) connections"),
 //
@@ -122,6 +134,7 @@ class _EditAchievementState extends State<EditAchievement> {
 //        },
 //        icon: Icon(Icons.link),
 //      ),
+      ),
     );
   }
 

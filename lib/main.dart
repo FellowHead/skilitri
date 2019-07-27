@@ -418,6 +418,7 @@ class SkilitriState extends State<Skilitri> {
             onPressed: () => {
               tree.addAchievementThroughUser(context, this)
             },
+            tooltip: "Add achievement",
             child: Icon(Icons.library_add),
           ),
           bottomNavigationBar: AnimatedContainer(
