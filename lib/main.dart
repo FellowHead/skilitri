@@ -38,7 +38,7 @@ class Skilitri extends StatefulWidget {
   }
 }
 
-class SkilitriState extends State<Skilitri> {
+class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
   bool check = false;
   SkillTree tree;
   Matrix4 matrix = Matrix4.identity();
@@ -51,8 +51,16 @@ class SkilitriState extends State<Skilitri> {
 
   @override
   void initState() {
-    super.initState();
     instance = this;
+    WidgetsBinding.instance.addObserver(this);
+    super.initState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      AudioItem.maybeShutUp();
+    }
   }
 
   void resetTree() {
