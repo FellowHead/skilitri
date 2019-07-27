@@ -398,7 +398,10 @@ class Node extends Parent with Child { // aka Skill
               height: 50,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                children: d._mediaItems.map((mi) => mi.getInfoPreview(context, notifier)).toList(),
+                children: d._mediaItems.map((mi) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                  child: mi.getInfoPreview(context, notifier),
+                )).toList(),
               ),
             ),
             onTap: () => {
@@ -538,6 +541,13 @@ class AudioItem extends FileMediaItem {
   bool isPlaying = false;
   double _seekbarProgress;
   double duration;
+  ValueNotifier _notif;
+
+  static void maybeShutUp() {
+    if (flutterSound.isPlaying) {
+      flutterSound.stopPlayer();
+    }
+  }
 
   AudioItem(File file) : super(file);
 
@@ -582,14 +592,31 @@ class AudioItem extends FileMediaItem {
 
   @override
   Widget getInfoPreview(BuildContext context, ValueNotifier notif) {
-    return null;
+    if (ModalRoute.of(context).isCurrent) {
+      _notif = notif;
+    }
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: ShapeDecoration(
+        shape: CircleBorder(),
+        color: Theme.of(context).primaryColor,
+      ),
+      child: IconButton(
+        onPressed: () =>
+        {
+          _togglePlaying(),
+        },
+        icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow, color: Colors.white),
+      ),
+    );
   }
 
-  void _togglePlaying(ValueNotifier notif) async {
+  void _togglePlaying() async {
     if (isPlaying) {
       await flutterSound.stopPlayer();
       isPlaying = false;
-      notif.value++;
+      _notif.value++;
     } else {
       if (flutterSound.isPlaying) {
         await flutterSound.stopPlayer();
@@ -603,27 +630,33 @@ class AudioItem extends FileMediaItem {
               duration = status.duration;
               currentPosition = status.currentPosition;
               //print("$currentPosition / $duration");
-              notif.value++;
             }
+            _notif.value++;
           },
           onDone: () =>
           {
             isPlaying = false,
-            notif.value++
+            _notif.value++
           });
     }
   }
 
   @override
   Widget getPostPreview(BuildContext context, ValueNotifier notif) {
-    Duration d = isPlaying ? Duration(milliseconds: currentPosition.toInt()) : Duration.zero;
+    if (ModalRoute.of(context).isCurrent) {
+      _notif = notif;
+    }
+    Duration d = isPlaying ?
+    (_seekbarProgress == null ? Duration(milliseconds: currentPosition.toInt())
+        : Duration(milliseconds: (duration * _seekbarProgress).toInt()))
+        : Duration.zero;
 
     return Row(
       children: <Widget>[
         IconButton(
           onPressed: () =>
           {
-            _togglePlaying(notif),
+            _togglePlaying(),
           },
           icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow),
         ),
@@ -725,10 +758,7 @@ class ImageItem extends FileMediaItem {
 
   @override
   Widget getInfoPreview(BuildContext context, ValueNotifier notif) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2.0),
-      child: Image.file(file, height: 50),
-    );
+    return Image.file(file, height: 50);
   }
 
   @override
@@ -750,17 +780,22 @@ class NodeInfo extends StatefulWidget {
 }
 
 class NodeInfoState extends State<NodeInfo> {
-  Timer timer;
   TextEditingController cTitle;
 
   @override
-  Widget build(BuildContext context) {
-    if (timer == null) {
-      timer = Timer.periodic(
-          Duration(seconds: 1), (Timer t) => widget.notif.value++);
-      cTitle = TextEditingController(text: widget.node.title);
-    }
+  void initState() {
+    cTitle = TextEditingController(text: widget.node.title);
+    super.initState();
+  }
 
+  @override
+  void dispose() {
+    AudioItem.maybeShutUp();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
           title: Text('Node information'),
@@ -769,25 +804,23 @@ class NodeInfoState extends State<NodeInfo> {
             animation: widget.notif, builder: (ctx, constraints) =>
             Container(
                 child: SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.all(10.0),
-                    child: Column(
-                        children: <Widget>[
-                          TextField(
-                              decoration: InputDecoration(
-                                  hintText: "Enter node name..."
-                              ),
-                              onChanged: (s) =>
-                              {
-                                widget.node.title = s
-                              },
-                              controller: cTitle
-                          ),
-                          Divider(
-                            height: 30.0,
-                          )
-                        ]..add(widget.node.getChildrenInfo(context, widget.notif))
-                    ),
+                  padding: EdgeInsets.all(10.0),
+                  child: Column(
+                      children: <Widget>[
+                        TextField(
+                            decoration: InputDecoration(
+                                hintText: "Enter node name..."
+                            ),
+                            onChanged: (s) =>
+                            {
+                              widget.node.title = s
+                            },
+                            controller: cTitle
+                        ),
+                        Divider(
+                          height: 30.0,
+                        )
+                      ]..add(widget.node.getChildrenInfo(context, widget.notif))
                   ),
                 )
             )

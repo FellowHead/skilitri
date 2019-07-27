@@ -20,10 +20,8 @@ class _EditAchievementState extends State<EditAchievement> {
 
   @override
   initState() {
+    _comment = TextEditingController(text: widget.achievement.comment);
     super.initState();
-    _comment = TextEditingController(text: widget.achievement.comment)..addListener(() => {
-
-    });
   }
 
   void eventuallyAddItem(MediaItem mi) {
@@ -63,6 +61,9 @@ class _EditAchievementState extends State<EditAchievement> {
                     onChanged: (s) => {
                       widget.achievement.comment = s
                     },
+                    decoration: InputDecoration(
+                      hintText: "Add a comment..."
+                    ),
                   ),
                   Divider(),
                   buildMediaCol(),
@@ -119,6 +120,7 @@ class _EditAchievementState extends State<EditAchievement> {
               ],
             ),
             onPressed: () => {
+              AudioItem.maybeShutUp(),
               Navigator.push(context, MaterialPageRoute(
                   builder: (ctx) => LinkAchievement(achievement: widget.achievement)
               ))
