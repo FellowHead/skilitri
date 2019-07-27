@@ -52,9 +52,21 @@ class Achievement extends TreeNeeder with Child {
       {
         Navigator.push(context, MaterialPageRoute(
             builder: (ctx) => EditAchievement(this, skilitri)
-        ))
+        )).then((res) => {
+          if (res != null) {
+
+          }
+        })
       },
     );
+  }
+
+  void remove() {
+    for (Node p in _parents) {
+      p.children.remove(this);
+    }
+    tree.achievements.remove(this);
+    _parents = null;
   }
 
   @override
@@ -83,7 +95,7 @@ class SkillTree {
         context,
         MaterialPageRoute(builder: (context) => EditAchievement(ach, skilitri))
     );
-    if (result == true) {
+    if (result == null) {
       achievements.add(ach);
       print("added :thumbsup:");
       return ach;
@@ -232,7 +244,8 @@ class Parent extends TreeNeeder {
 
 class Child { // possible child of multiple things
   Set<Parent> _parents = {};
-  
+
+  Parent getFirstParent() => _parents.first;
   bool hasParent(Parent p) => _parents.contains(p);
   int get numParents => _parents.length;
 
@@ -317,31 +330,12 @@ class Node extends Parent with Child { // aka Skill
           widthFactor: 1.0,
           heightFactor: 1.0,
           child: Container(
-            padding: EdgeInsets.all(16.0).copyWith(top: 32.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(title,
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20.0
-                  ),
-                ),
-                Column(
-                  children: <Widget>[
-                    RaisedButton(
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      onPressed: () =>
-                      {
-                        //updoot()
-                      },
-                      child: Text("so guys we did it"
-                        //getTotalScore().toString()
-                      ),
-                    )
-                  ],
-                )
-              ],
+            padding: EdgeInsets.all(32.0),
+            child: Text(title,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20.0
+              ),
             ),
           )
       ),

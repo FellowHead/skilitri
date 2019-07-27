@@ -148,10 +148,10 @@ class SkilitriState extends State<Skilitri> {
     });
   }
 
-  void onAddNode(Offset position, {Node parent, Node child}) {
+  Future<bool> onAddNode(Offset position, {Node parent, Node child}) async {
     var controller = TextEditingController();
 
-    showDialog(
+    dynamic res = await showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
@@ -171,13 +171,14 @@ class SkilitriState extends State<Skilitri> {
               child: Text("OK"),
               onPressed: () => {
                 addNode(controller.text, position, parent: parent, child: child),
-                Navigator.pop(ctx)
+                Navigator.pop(ctx, true)
               },
             )
           ],
         );
       }
     );
+    return res != null;
   }
 
   void addNode(String title, Offset position, {Node parent, Node child}) {
@@ -424,24 +425,19 @@ class SkilitriState extends State<Skilitri> {
                           ),
                         ),
                         IconButton(
-                          onPressed: selection.length == 2 &&
+                          onPressed: (selection.length == 1 && selection.first.numParents == 1) ||
+                              (selection.length == 2 &&
                               (selection.last.hasParent(selection.first)
-                              || selection.first.hasParent(selection.last)) ? () =>
+                              || selection.first.hasParent(selection.last))) ? () =>
                           {
                             setState(() =>
                             {
-                              if (selection.last.hasParent(selection.first)) {
-                                selection.last.unlinkParent(selection.first),
-                                onAddNode((selection.first.position + selection.last.position) / 2,
-                                    parent: selection.first,
-                                    child: selection.last
-                                )
+                              if (selection.length == 1) {
+                                insertNode(selection.first.getFirstParent(), selection.first)
+                              } else if (selection.last.hasParent(selection.first)) {
+                                insertNode(selection.first, selection.last)
                               } else {
-                                selection.first.unlinkParent(selection.last),
-                                onAddNode((selection.first.position + selection.last.position) / 2,
-                                    parent: selection.last,
-                                    child: selection.first
-                                )
+                                insertNode(selection.last, selection.first)
                               },
                             })
                           } : null,
@@ -516,6 +512,17 @@ class SkilitriState extends State<Skilitri> {
           ),
         )
     );
+  }
+
+  void insertNode(Node parent, Node child) {
+    onAddNode((parent.position + child.position) / 2,
+        parent: parent,
+        child: child
+    ).then((v) => {
+      if (v) {
+        child.unlinkParent(parent)
+      }
+    });
   }
 
   void onDragStop() {

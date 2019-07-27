@@ -32,54 +32,57 @@ class _EditAchievementState extends State<EditAchievement> {
       ),
       body: Container(
         child: SingleChildScrollView(
-          child: Column(
-            children: <Widget>[
-              TextField(
-                keyboardType: TextInputType.multiline,
-                maxLines: null,
-                controller: _comment,
-                onChanged: (s) => {
-                  widget.achievement.comment = s
-                },
-              ),
-              Divider(),
-              buildMediaCol(),
-              Divider(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  IconButton(
-                    onPressed: () => {
-                      ImageItem.throughUser(context, whenDone: (ii) => {
-                        if (ii != null) {
-                          widget.achievement.mediaItems.add(ii),
-                          setState(() => {})
-                        },
-                      })
-                    },
-                    icon: Icon(Icons.image),
-                  ),
-                  IconButton(
-                    onPressed: () => {
-                      //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
-                    },
-                    icon: Icon(Icons.videocam),
-                  ),
-                  IconButton(
-                    onPressed: () => {
-                      //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
-                    },
-                    icon: Icon(Icons.mic),
-                  ),
-                  IconButton(
-                    onPressed: () => {
-                      //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
-                    },
-                    icon: Icon(Icons.insert_drive_file),
-                  )
-                ],
-              )
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: <Widget>[
+                TextField(
+                  keyboardType: TextInputType.multiline,
+                  maxLines: null,
+                  controller: _comment,
+                  onChanged: (s) => {
+                    widget.achievement.comment = s
+                  },
+                ),
+                Divider(),
+                buildMediaCol(),
+                Divider(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    IconButton(
+                      onPressed: () => {
+                        ImageItem.throughUser(context, whenDone: (ii) => {
+                          if (ii != null) {
+                            widget.achievement.mediaItems.add(ii),
+                            setState(() => {})
+                          },
+                        })
+                      },
+                      icon: Icon(Icons.image),
+                    ),
+                    IconButton(
+                      onPressed: () => {
+                        //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
+                      },
+                      icon: Icon(Icons.videocam),
+                    ),
+                    IconButton(
+                      onPressed: () => {
+                        //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
+                      },
+                      icon: Icon(Icons.mic),
+                    ),
+                    IconButton(
+                      onPressed: () => {
+                        //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
+                      },
+                      icon: Icon(Icons.insert_drive_file),
+                    )
+                  ],
+                )
+              ],
+            ),
           ),
         ),
       ),
@@ -96,6 +99,14 @@ class _EditAchievementState extends State<EditAchievement> {
             Navigator.push(context, MaterialPageRoute(
                 builder: (ctx) => LinkAchievement(achievement: widget.achievement, skilitri: widget.skilitri)
             ))
+          },
+        ),
+        FlatButton(
+          shape: StadiumBorder(),
+          child: Text("Delete"),
+          onPressed: () => {
+            widget.achievement.remove(),
+            Navigator.pop(context, false)
           },
         ),
       ],
@@ -116,7 +127,10 @@ class _EditAchievementState extends State<EditAchievement> {
 
   Widget buildMediaCol() {
     return Column(
-      children: widget.achievement.mediaItems.map((mi) => mi.getPostPreview(context, null)).toList(),
+      children: widget.achievement.mediaItems.map((mi) => Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: mi.getPostPreview(context, null),
+      )).toList(),
     );
   }
 }
