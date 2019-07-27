@@ -125,18 +125,6 @@ class _EditAchievementState extends State<EditAchievement> {
             },
           ),
         ],
-//      floatingActionButton: FloatingActionButton.extended(
-//        label: Text("${widget.achievement.getAscendants().length} (${widget.achievement.numParents}) connections"),
-//
-//        onPressed: () => {
-//          Navigator.push(context, MaterialPageRoute(
-//              builder: (ctx) => LinkAchievement(achievement: widget.achievement, skilitri: widget.skilitri)
-//          )).then((result) => {
-//
-//          })
-//        },
-//        icon: Icon(Icons.link),
-//      ),
       ),
     );
   }
@@ -154,7 +142,30 @@ class _EditAchievementState extends State<EditAchievement> {
             children: widget.achievement.copyItems().map((mi) =>
                 Padding(
                   padding: const EdgeInsets.all(4.0),
-                  child: mi.getPostPreview(context, notif),
+                  child: GestureDetector(
+                    onLongPressStart: (details) => {
+                      Feedback.forLongPress(context),
+                      showDialog(
+                        context: context,
+                        builder: (ctx) {
+                          return AlertDialog(
+                            title: Text("Media item options"),
+                            actions: <Widget>[
+                              FlatButton.icon(
+                                icon: Icon(Icons.delete_forever),
+                                onPressed: () => {
+                                  mi.delete(notif: notif),
+                                  Navigator.pop(ctx)
+                                },
+                                label: Text("Delete"),
+                              )
+                            ],
+                          );
+                        }
+                      )
+                    },
+                    child: mi.getPostPreview(context, notif)
+                  ),
                 )).toList(),
           );
         }

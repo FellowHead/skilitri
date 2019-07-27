@@ -429,15 +429,10 @@ abstract class MediaItem {
   void _del();
 
 
-  Widget buildDeleteButton(ValueNotifier notif) {
-    return IconButton(
-      onPressed: () => {
-        _del(),
-        onDeletion(),
-        notif.value++
-      },
-      icon: Icon(Icons.delete_forever),
-    );
+  void delete({ValueNotifier notif}) {
+    _del();
+    onDeletion();
+    notif?.value++;
   }
 
   static MediaItem _decipher(Map<String, dynamic> json) {
@@ -446,6 +441,7 @@ abstract class MediaItem {
       case AudioItem.TYPENAME: return AudioItem.fromJson(json);
     }
     print("error? no media item created from json");
+    return null;
   }
 
   Map<String, dynamic> toJson() =>
@@ -649,7 +645,8 @@ class AudioItem extends FileMediaItem {
             value: 0,
           ),
         ),
-        buildDeleteButton(notif)
+        //TODO: display current position in audio
+        //buildDeleteButton(notif)
       ],
     );
   }
