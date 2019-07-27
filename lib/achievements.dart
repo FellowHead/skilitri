@@ -26,11 +26,18 @@ class _EditAchievementState extends State<EditAchievement> {
     });
   }
 
+  void eventuallyAddItem(MediaItem mi) {
+    if (mi != null) {
+      widget.achievement.addItem(mi);
+      setState(() => {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () {
-        if (widget.achievement.comment == "" && widget.achievement.mediaItems.length == 0) {
+        if (widget.achievement.comment == "" && !widget.achievement.hasItems) {
           print("deleting because of no comment");
           widget.achievement.remove();
           Navigator.pop(context, true);
@@ -65,12 +72,7 @@ class _EditAchievementState extends State<EditAchievement> {
                     children: <Widget>[
                       IconButton(
                         onPressed: () => {
-                          ImageItem.throughUser(context, whenDone: (ii) => {
-                            if (ii != null) {
-                              widget.achievement.mediaItems.add(ii),
-                              setState(() => {})
-                            },
-                          })
+                          ImageItem.throughUser(context).then(eventuallyAddItem)
                         },
                         icon: Icon(Icons.image),
                       ),
@@ -82,7 +84,7 @@ class _EditAchievementState extends State<EditAchievement> {
                       ),
                       IconButton(
                         onPressed: () => {
-                          //widget.achievement.mediaItems.add(VideoItem.throughUser(context))
+                          AudioItem.throughUser(context).then(eventuallyAddItem)
                         },
                         icon: Icon(Icons.mic),
                       ),
@@ -139,15 +141,23 @@ class _EditAchievementState extends State<EditAchievement> {
     );
   }
 
+  ValueNotifier notif = ValueNotifier(0);
+
   Widget buildMediaCol() {
-    if (widget.achievement.mediaItems.length == 0) {
+    if (!widget.achievement.hasItems) {
       return Text("No media");
     }
-    return Column(
-      children: widget.achievement.mediaItems.map((mi) => Padding(
-        padding: const EdgeInsets.all(4.0),
-        child: mi.getPostPreview(context, null),
-      )).toList(),
+    return AnimatedBuilder(
+        animation: notif,
+        builder: (ctx, child) {
+          return Column(
+            children: widget.achievement.copyItems().map((mi) =>
+                Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: mi.getPostPreview(context, notif),
+                )).toList(),
+          );
+        }
     );
   }
 }

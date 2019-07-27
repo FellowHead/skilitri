@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
-//import 'package:audio_recorder/audio_recorder.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_sound/android_encoder.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-//import 'package:fluttery_audio/fluttery_audio.dart';
+import 'package:flutter_sound/ios_quality.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:skilitri/theme.dart';
 import 'package:video_player/video_player.dart';
 
@@ -16,7 +16,17 @@ import 'achievements.dart';
 
 class Achievement extends TreeNeeder with Child {
   String comment = "";
-  List<MediaItem> mediaItems = [];
+  List<MediaItem> _mediaItems = [];
+
+  bool get hasItems => _mediaItems.length > 0;
+  List<MediaItem> copyItems() => _mediaItems.toList(growable: false);
+
+  void addItem(MediaItem mi) {
+    mi.onDeletion = () {
+      _mediaItems.remove(mi);
+    };
+    _mediaItems.add(mi);
+  }
 
   Achievement(SkillTree tree) : super(tree);
 
@@ -24,12 +34,12 @@ class Achievement extends TreeNeeder with Child {
       super.toJson()
         ..addAll({
           'comment': comment,
-          'media': mediaItems.map((mi) => mi.toJson()).toList(growable: false)
+          'media': _mediaItems.map((mi) => mi.toJson()).toList(growable: false)
         });
 
   Achievement.fromJson(Map<String, dynamic> json, SkillTree tree)
       : comment = json['comment'],
-        mediaItems = List.from(json['media'])
+        _mediaItems = List.from(json['media'])
             .map((m) => MediaItem._decipher(m))
             .toList(),
         super.fromJson(json, tree);
@@ -388,7 +398,7 @@ class Node extends Parent with Child { // aka Skill
               height: 50,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                children: d.mediaItems.map((mi) => mi.getInfoPreview(context, notifier)).toList(),
+                children: d._mediaItems.map((mi) => mi.getInfoPreview(context, notifier)).toList(),
               ),
             ),
             onTap: () => {
@@ -407,6 +417,8 @@ class Node extends Parent with Child { // aka Skill
 
 
 abstract class MediaItem {
+  void Function() onDeletion;
+
   MediaItem();
   
   Map<String, dynamic> _addSpecifics();
@@ -414,10 +426,24 @@ abstract class MediaItem {
   Widget getInfoPreview(BuildContext context, ValueNotifier notif);
   String _getType();
   DateTime getLastModified();
+  void _del();
+
+
+  Widget buildDeleteButton(ValueNotifier notif) {
+    return IconButton(
+      onPressed: () => {
+        _del(),
+        onDeletion(),
+        notif.value++
+      },
+      icon: Icon(Icons.delete_forever),
+    );
+  }
 
   static MediaItem _decipher(Map<String, dynamic> json) {
     switch (json['type']) {
       case ImageItem.TYPENAME: return ImageItem.fromJson(json);
+      case AudioItem.TYPENAME: return AudioItem.fromJson(json);
     }
     print("error? no media item created from json");
   }
@@ -439,6 +465,19 @@ abstract class FileMediaItem extends MediaItem {
   DateTime getLastModified() {
     return file.lastModifiedSync();
   }
+
+  @override
+  void _del() {
+    _onFileDelete();
+    if (file.path.contains("skilitri")) {
+      print("Deleting source file");
+      file.deleteSync();
+    } else {
+      print("Kept source");
+    }
+  }
+
+  void _onFileDelete();
 
   @override
   Map<String, dynamic> _addSpecifics() => {
@@ -492,50 +531,48 @@ class VideoItem extends FileMediaItem {
     ) : Container();
   }
 
+  @override
+  void _onFileDelete() {}
 }
 
 class AudioItem extends FileMediaItem {
   static const String TYPENAME = "audio";
+  static FlutterSound flutterSound = FlutterSound();
+  static double currentPosition;
+  bool isPlaying = false;
+  double _seekbarProgress;
+  double duration;
 
   AudioItem(File file) : super(file);
 
-  AudioItem.throughUser(BuildContext context) : super(null) {
-    recAudio(context);
-  }
+  AudioItem.fromJson(Map<String, dynamic> json) : super.fromJson(json);
 
-  Future recAudio(BuildContext context) async {
-    //bool hasPermissions = await AudioRecorder.hasPermissions;
-    //final directory = await getApplicationDocumentsDirectory();
-    final directory = Directory("/storage/emulated/0/Android/data/me.fellowhead.skilitri/files");
+  static Future<AudioItem> throughUser(BuildContext context) async {
+    final directory = await getApplicationDocumentsDirectory();
+    print(directory);
 
-    FlutterSound flutterSound = FlutterSound();
-    String path = await flutterSound.startRecorder(null, androidEncoder: AndroidEncoder.AMR_WB);
+    String path = await flutterSound.startRecorder(
+      "${directory.path}/${DateTime.now().millisecondsSinceEpoch}.aac",
+      androidEncoder: AndroidEncoder.AAC_ELD,
+      bitRate: 128000,
+      iosQuality: IosQuality.HIGH
+    );
 
-//    await AudioRecorder.start(path: '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.aac',
-//        audioOutputFormat: AudioOutputFormat.AAC);
-
-    showDialog(
+    return await showDialog(
         context: context,
         builder: (ctx) {
           return AlertDialog(
             title: Text("Recording audio..."),
-            content: Column(
-              children: <Widget>[
-                FlatButton(
-                    onPressed: () =>
-                    {
-//                      AudioRecorder.stop().then((rec) =>
-//                      {
-//                        file = File(rec.path),
-//                        Navigator.pop(ctx)
-//                      })
-                      flutterSound.stopRecorder().then((s) => {
-                        print("Stopped recorder... $s")
-                      })
-                    },
-                    child: Text("Stop")
-                )
-              ],
+            content: FlatButton(
+                onPressed: () =>
+                {
+                  flutterSound.stopRecorder().then((s) =>
+                  {
+                    Navigator.pop(
+                        ctx, AudioItem(File(path)))
+                  })
+                },
+                child: Text("Stop")
             ),
           );
         }
@@ -547,48 +584,81 @@ class AudioItem extends FileMediaItem {
     return TYPENAME;
   }
 
-  bool isPlaying() {
-    //return player.state == AudioPlayerState.PLAYING;
-    return true;
-  }
-
   @override
   Widget getInfoPreview(BuildContext context, ValueNotifier notif) {
-    //print(player.state);
-
-//    return Audio(
-//      audioUrl: "http://techslides.com/demos/samples/sample.aac",
-//      playbackState: PlaybackState.playing,
-//      child: Container(
-//          height: 25,
-//          child: Row(
-//            children: <Widget>[
-//              IconButton(
-//                onPressed: () => {
-////                if (isPlaying()) {
-////                  player.stop()
-////                } else {
-////                  player.preload(Uri.file(file.path).toString()).then((l) => {
-////                    player.stop().then((uff) => {
-////                      player.play(Uri.file(file.path).toString())
-////                    })
-////                  }),
-////                },
-//                  notif.value++
-//                },
-//                icon: Icon(isPlaying() ? Icons.pause : Icons.play_arrow),
-//              )
-//            ],
-//          )
-//      ),
-//    );
     return null;
+  }
+
+  void _togglePlaying(ValueNotifier notif) async {
+    if (isPlaying) {
+      await flutterSound.stopPlayer();
+      isPlaying = false;
+      notif.value++;
+    } else {
+      if (flutterSound.isPlaying) {
+        await flutterSound.stopPlayer();
+      }
+      await flutterSound.startPlayer(file.uri.toString());
+      isPlaying = true;
+
+      flutterSound.onPlayerStateChanged.listen(
+          (status) {
+            if (status != null) {
+              duration = status.duration;
+              currentPosition = status.currentPosition;
+              //print("$currentPosition / $duration");
+              notif.value++;
+            }
+          },
+          onDone: () =>
+          {
+            isPlaying = false,
+            notif.value++
+          });
+    }
   }
 
   @override
   Widget getPostPreview(BuildContext context, ValueNotifier notif) {
-    // TODO: implement getPostPreview
-    return null;
+    return Row(
+      children: <Widget>[
+        IconButton(
+          onPressed: () =>
+          {
+            _togglePlaying(notif),
+          },
+          icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow),
+        ),
+        Expanded(
+          child: isPlaying ? Slider.adaptive(
+            onChangeStart: (v) => {
+              flutterSound.pausePlayer()
+            },
+            onChanged: (v) => {
+              _seekbarProgress = v
+            },
+            onChangeEnd: (v) => {
+              currentPosition = duration * _seekbarProgress,
+              _seekbarProgress = null,
+              flutterSound.seekToPlayer((duration * v).toInt()),
+              flutterSound.resumePlayer()
+            },
+            value: _seekbarProgress ?? currentPosition / duration,
+          ) : Slider.adaptive(
+            onChanged: null,
+            value: 0,
+          ),
+        ),
+        buildDeleteButton(notif)
+      ],
+    );
+  }
+
+  @override
+  void _onFileDelete() {
+    if (isPlaying) {
+      flutterSound.stopPlayer();
+    }
   }
 }
 
@@ -597,8 +667,8 @@ class ImageItem extends FileMediaItem {
 
   ImageItem(File file) : super(file);
 
-  ImageItem.throughUser(BuildContext context, {void Function(ImageItem) whenDone}) : super(null) {
-    showDialog(
+  static Future<ImageItem> throughUser(BuildContext context) async {
+    return await showDialog(
         context: context,
         builder: (ctx) {
           return SimpleDialog(
@@ -606,15 +676,13 @@ class ImageItem extends FileMediaItem {
             children: <Widget>[
               IconButton(
                 onPressed: () => {
-                  getImage(ImageSource.camera, context, null).then(whenDone),
-                  Navigator.pop(ctx),
+                  getImage(ImageSource.camera, context).then((ii) => Navigator.pop(ctx, ii)),
                 },
-                icon: Icon(Icons.camera),
+                icon: Icon(Icons.camera_alt),
               ),
               IconButton(
                 onPressed: () => {
-                  getImage(ImageSource.gallery, context, null).then(whenDone),
-                  Navigator.pop(ctx),
+                  getImage(ImageSource.gallery, context).then((ii) => Navigator.pop(ctx, ii)),
                 },
                 icon: Icon(Icons.photo_library),
               )
@@ -631,14 +699,10 @@ class ImageItem extends FileMediaItem {
     return TYPENAME;
   }
 
-  Future<ImageItem> getImage(ImageSource source, BuildContext context, ValueNotifier notif) async {
+  static Future<ImageItem> getImage(ImageSource source, BuildContext context) async {
     var image = await ImagePicker.pickImage(source: source);
     if (image != null) {
-      file = image;
-      if (notif != null) {
-        notif.value++;
-      }
-      return this;
+      return ImageItem(image);
     }
     return null;
   }
@@ -667,6 +731,9 @@ class ImageItem extends FileMediaItem {
       child: Image.file(file, height: 50),
     );
   }
+
+  @override
+  void _onFileDelete() {}
 }
 
 
