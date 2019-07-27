@@ -616,6 +616,8 @@ class AudioItem extends FileMediaItem {
 
   @override
   Widget getPostPreview(BuildContext context, ValueNotifier notif) {
+    Duration d = isPlaying ? Duration(milliseconds: currentPosition.toInt()) : Duration.zero;
+
     return Row(
       children: <Widget>[
         IconButton(
@@ -645,8 +647,8 @@ class AudioItem extends FileMediaItem {
             value: 0,
           ),
         ),
-        //TODO: display current position in audio
-        //buildDeleteButton(notif)
+        Text("${d.inMinutes % Duration.minutesPerHour}:"
+            "${(d.inSeconds % Duration.secondsPerMinute).toString().padLeft(2, "0")}")
       ],
     );
   }
