@@ -6,6 +6,8 @@ import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 //import 'package:fluttery_audio/fluttery_audio.dart';
 import 'package:skilitri/tree.dart';
 import 'package:matrix_gesture_detector/matrix_gesture_detector.dart';
@@ -287,7 +289,11 @@ class SkilitriState extends State<Skilitri> {
                                       children: tree
                                           .nodes
                                           .map((n) =>
-                                          buildNode(n, () => onTap(n), () => onLongPress(n), selectionType(n))
+                                          buildNode(
+                                              n,
+                                              onTap != null ? () => onTap(n) : () => {},
+                                              onLongPress != null ? () => onLongPress(n) : () => {},
+                                              selectionType != null ? selectionType(n) : () => {})
                                       ).toList(),
                                     )
                                   ]
@@ -325,6 +331,17 @@ class SkilitriState extends State<Skilitri> {
                       color: Theme.of(context).primaryColor
                     ),
                   ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: FlatButton(
+                      onPressed: () => {
+                        tree.addAchievementThroughUser(context, this)
+                      },
+                      child: Text("Add achievement"),
+                      shape: StadiumBorder(),
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  )
                 ]..addAll(tree.getSortedAchievements().map((a) => a.render(context, this)).toList()),
               )
             ),
@@ -395,113 +412,6 @@ class SkilitriState extends State<Skilitri> {
                         }
                     )
                   ),
-                  // SELECTION MODE BAR
-                  AnimatedContainer(
-                    duration: Duration(milliseconds: 300),
-                    curve: Curves.decelerate,
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                              blurRadius: 10
-                          )
-                        ]
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        IconButton(
-                          onPressed: () =>
-                          {
-                            setState(() =>
-                            {
-                              for (Node n in selection) {
-                                n.remove(true)
-                              },
-                              exitSelectionMode()
-                            })
-                          },
-                          icon: Icon(
-                              Icons.delete
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: (selection.length == 1 && selection.first.numParents == 1) ||
-                              (selection.length == 2 &&
-                              (selection.last.hasParent(selection.first)
-                              || selection.first.hasParent(selection.last))) ? () =>
-                          {
-                            setState(() =>
-                            {
-                              if (selection.length == 1) {
-                                insertNode(selection.first.getFirstParent(), selection.first)
-                              } else if (selection.last.hasParent(selection.first)) {
-                                insertNode(selection.first, selection.last)
-                              } else {
-                                insertNode(selection.last, selection.first)
-                              },
-                            })
-                          } : null,
-                          icon: Icon(
-                              Icons.add
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: selection.length != 1 ? () =>
-                          {
-                            setState(() =>
-                            {
-                              if (active != null) {
-                                for (Node n in selection) {
-                                  if (n != active) {
-                                    if (!active.getAscendants().contains(n)) {
-                                      active.addChild(n),
-                                    } else
-                                      {
-                                        print('well bois we did it, overflow is no more')
-                                      }
-                                  }
-                                },
-                              },
-                            })
-                          } : null,
-                          icon: Icon(
-                              Icons.link
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () =>
-                          {
-                            setState(() =>
-                            {
-                              for (Node n in selection) {
-                                for (Node c in n.children.toSet()) {
-                                  if (selection.contains(c)) {
-                                    c.unlinkParent(n)
-                                  }
-                                }
-                              },
-                            })
-                          },
-                          icon: Icon(
-                              Icons.link_off
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: selection.length == 1 ? () =>
-                          {
-                            setState(() =>
-                            {
-                              selection.first.displayInfo(context)
-                            })
-                          } : null,
-                          icon: Icon(
-                              Icons.info_outline
-                          ),
-                        ),
-                      ],
-                    ),
-                    height: inSelectionMode ? 50 : 0,
-                  ),
                 ]
             ),
           floatingActionButton: FloatingActionButton(
@@ -509,6 +419,112 @@ class SkilitriState extends State<Skilitri> {
               tree.addAchievementThroughUser(context, this)
             },
             child: Icon(Icons.library_add),
+          ),
+          bottomNavigationBar: AnimatedContainer(
+            duration: Duration(milliseconds: 300),
+            curve: Curves.decelerate,
+            decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                      blurRadius: 10
+                  )
+                ]
+            ),
+            child: Row(
+              children: <Widget>[
+                IconButton(
+                  onPressed: () =>
+                  {
+                    setState(() =>
+                    {
+                      for (Node n in selection) {
+                        n.remove(true)
+                      },
+                      exitSelectionMode()
+                    })
+                  },
+                  icon: Icon(
+                      Icons.delete
+                  ),
+                ),
+                IconButton(
+                  onPressed: (selection.length == 1 && selection.first.numParents == 1) ||
+                      (selection.length == 2 &&
+                          (selection.last.hasParent(selection.first)
+                              || selection.first.hasParent(selection.last))) ? () =>
+                  {
+                    setState(() =>
+                    {
+                      if (selection.length == 1) {
+                        insertNode(selection.first.getFirstParent(), selection.first)
+                      } else if (selection.last.hasParent(selection.first)) {
+                        insertNode(selection.first, selection.last)
+                      } else {
+                        insertNode(selection.last, selection.first)
+                      },
+                    })
+                  } : null,
+                  icon: Icon(
+                      Icons.add
+                  ),
+                ),
+                IconButton(
+                  onPressed: selection.length != 1 ? () =>
+                  {
+                    setState(() =>
+                    {
+                      if (active != null) {
+                        for (Node n in selection) {
+                          if (n != active) {
+                            if (!active.getAscendants().contains(n)) {
+                              active.addChild(n),
+                            } else
+                              {
+                                print('well bois we did it, overflow is no more')
+                              }
+                          }
+                        },
+                      },
+                    })
+                  } : null,
+                  icon: Icon(
+                      Icons.link
+                  ),
+                ),
+                IconButton(
+                  onPressed: () =>
+                  {
+                    setState(() =>
+                    {
+                      for (Node n in selection) {
+                        for (Node c in n.children.toSet()) {
+                          if (selection.contains(c)) {
+                            c.unlinkParent(n)
+                          }
+                        }
+                      },
+                    })
+                  },
+                  icon: Icon(
+                      Icons.link_off
+                  ),
+                ),
+                IconButton(
+                  onPressed: selection.length == 1 ? () =>
+                  {
+                    setState(() =>
+                    {
+                      selection.first.displayInfo(context)
+                    })
+                  } : null,
+                  icon: Icon(
+                      Icons.info_outline
+                  ),
+                ),
+              ],
+            ),
+            height: inSelectionMode ? 50 : 0,
           ),
         )
     );
