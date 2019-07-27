@@ -163,15 +163,12 @@ class SkilitriState extends State<Skilitri> {
       builder: (ctx) {
         return AlertDialog(
           title: Text("Create new node"),
-          content: Column(
-            children: <Widget>[
-              TextField(
-                decoration: InputDecoration(
-                  hintText: "Enter node name..."
-                ),
-                controller: controller,
-              ),
-            ],
+          content: TextField(
+            decoration: InputDecoration(
+              hintText: "Enter node name..."
+            ),
+            controller: controller,
+            autofocus: true,
           ),
           actions: <Widget>[
             FlatButton(
