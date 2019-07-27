@@ -7,11 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_sound/android_encoder.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 //import 'package:fluttery_audio/fluttery_audio.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:skilitri/main.dart';
 import 'package:skilitri/theme.dart';
 import 'package:video_player/video_player.dart';
 
@@ -38,7 +35,7 @@ class Achievement extends TreeNeeder with Child {
             .toList(),
         super.fromJson(json, tree);
 
-  ListTile render(BuildContext context, SkilitriState skilitri) {
+  ListTile render(BuildContext context) {
     return ListTile(
       title: Column(
         children: <Widget>[
@@ -53,7 +50,7 @@ class Achievement extends TreeNeeder with Child {
       onTap: () =>
       {
         Navigator.push(context, MaterialPageRoute(
-            builder: (ctx) => EditAchievement(this, skilitri)
+            builder: (ctx) => EditAchievement(this)
         )).then((res) => {
           if (res != null) {
 
@@ -91,11 +88,11 @@ class SkillTree {
 
   SkillTree();
 
-  Future<Achievement> addAchievementThroughUser(BuildContext context, SkilitriState skilitri) async {
+  Future<Achievement> addAchievementThroughUser(BuildContext context) async {
     Achievement ach = Achievement(this);
     dynamic result = await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => EditAchievement(ach, skilitri))
+        MaterialPageRoute(builder: (context) => EditAchievement(ach))
     );
     if (result == null) {
       achievements.add(ach);
@@ -379,36 +376,31 @@ class Node extends Parent with Child { // aka Skill
     _parents = null;
   }
 
-//  Widget getChildrenInfo(BuildContext context, ValueNotifier notifier) {
-//    List<ScoreData> data = List();
-//    for (Node sn in getDescendants().where((n) => n.body is ScoreBody)) {
-//      (sn.body as ScoreBody).updoots.forEach((dt) => {
-//        data.add(ScoreData(sn, dt))
-//      });
-//    }
-//    data.sort((a, b) => b.count.millisecondsSinceEpoch - a.count.millisecondsSinceEpoch);
-//    return ListView(
-//      physics: NeverScrollableScrollPhysics(),
-//      shrinkWrap: true,
-//      padding: EdgeInsets.symmetric(vertical: 4.0),
-//      children: data.map((d) =>
-//          ListTile(
-//            title: Text(ScoreBody.dateToBeautiful(d.count)),
-//            onTap: () => {
-//              d.node.displayInfo(context)
-//            },
-//            leading: Text(d.node.title),
-////            trailing: IconButton(
-////              onPressed: () => {
-////                (d.node.body as ScoreBody).updoots.remove(d.count),
-////                (d.node.body as ScoreBody).score--,
-////                notifier.value++
-////              },
-////              icon: Icon(Icons.delete),
-////            ),
-//          )).toList(),
-//    );
-//  }
+  Widget getChildrenInfo(BuildContext context, ValueNotifier notifier) {
+    List<Achievement> data = List.from(getDescendants().where((a) => a is Achievement));
+    data.sort((a, b) => b.creationDate.millisecondsSinceEpoch - a.creationDate.millisecondsSinceEpoch);
+    return Column(
+      children: data.map((d) =>
+          ListTile(
+            title: Container(
+              height: 50,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: d.mediaItems.map((mi) => mi.getInfoPreview(context, notifier)).toList(),
+              ),
+            ),
+            onTap: () => {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (ctx) => EditAchievement(d)
+              ))
+            },
+            leading: Container(
+              width: 100,
+                child: Text(d.comment, overflow: TextOverflow.fade,)
+            ),
+          )).toList(),
+    );
+  }
 }
 
 
@@ -668,7 +660,10 @@ class ImageItem extends FileMediaItem {
 
   @override
   Widget getInfoPreview(BuildContext context, ValueNotifier notif) {
-    return Image.file(file, height: 50);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+      child: Image.file(file, height: 50),
+    );
   }
 }
 
@@ -723,8 +718,7 @@ class NodeInfoState extends State<NodeInfo> {
                           Divider(
                             height: 30.0,
                           )
-                        ]
-                          //..add(widget.node.getChildrenInfo(context, widget.notif))
+                        ]..add(widget.node.getChildrenInfo(context, widget.notif))
                     ),
                   ),
                 )

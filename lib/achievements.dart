@@ -8,9 +8,8 @@ import 'main.dart';
 
 class EditAchievement extends StatefulWidget {
   final Achievement achievement;
-  final SkilitriState skilitri;
 
-  EditAchievement(this.achievement, this.skilitri);
+  EditAchievement(this.achievement);
 
   @override
   _EditAchievementState createState() => _EditAchievementState();
@@ -119,7 +118,7 @@ class _EditAchievementState extends State<EditAchievement> {
             ),
             onPressed: () => {
               Navigator.push(context, MaterialPageRoute(
-                  builder: (ctx) => LinkAchievement(achievement: widget.achievement, skilitri: widget.skilitri)
+                  builder: (ctx) => LinkAchievement(achievement: widget.achievement)
               ))
             },
           ),
@@ -152,9 +151,8 @@ class _EditAchievementState extends State<EditAchievement> {
 
 class LinkAchievement extends StatefulWidget {
   final Achievement achievement;
-  final SkilitriState skilitri;
 
-  const LinkAchievement({Key key, this.achievement, this.skilitri}) : super(key: key);
+  const LinkAchievement({Key key, this.achievement}) : super(key: key);
 
   @override
   _LinkAchievementState createState() => _LinkAchievementState();
@@ -176,7 +174,7 @@ class _LinkAchievementState extends State<LinkAchievement> {
       appBar: AppBar(
         title: Text("Select connections"),
       ),
-      body: widget.skilitri.buildViewport(
+      body: SkilitriState.instance.buildViewport(
               (n) =>
           {
             if (widget.achievement.hasParent(n)) {

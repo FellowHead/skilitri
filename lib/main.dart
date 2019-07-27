@@ -47,6 +47,13 @@ class SkilitriState extends State<Skilitri> {
   Set<Node> selection = {};
   Node active;
   Node dragged;
+  static SkilitriState instance;
+
+  @override
+  void initState() {
+    super.initState();
+    instance = this;
+  }
 
   void resetTree() {
 //    tree = SkillTree(
@@ -331,14 +338,14 @@ class SkilitriState extends State<Skilitri> {
                     padding: EdgeInsets.symmetric(horizontal: 8.0),
                     child: FlatButton(
                       onPressed: () => {
-                        tree.addAchievementThroughUser(context, this)
+                        tree.addAchievementThroughUser(context)
                       },
                       child: Text("Add achievement", style: lightStyle,),
                       shape: StadiumBorder(),
                         color: Theme.of(context).primaryColor
                     ),
                   )
-                ]..addAll(tree.getSortedAchievements().map((a) => a.render(context, this)).toList()),
+                ]..addAll(tree.getSortedAchievements().map((a) => a.render(context)).toList()),
               )
             ),
             body: Column(
@@ -412,7 +419,7 @@ class SkilitriState extends State<Skilitri> {
             ),
           floatingActionButton: FloatingActionButton(
             onPressed: () => {
-              tree.addAchievementThroughUser(context, this)
+              tree.addAchievementThroughUser(context)
             },
             tooltip: "Add achievement",
             child: Icon(Icons.library_add),
