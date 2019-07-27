@@ -30,7 +30,7 @@ class _EditAchievementState extends State<EditAchievement> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () {
-        if (widget.achievement.comment == null) {
+        if (widget.achievement.comment == "" && widget.achievement.mediaItems.length == 0) {
           print("deleting because of no comment");
           widget.achievement.remove();
           Navigator.pop(context, true);
@@ -140,6 +140,9 @@ class _EditAchievementState extends State<EditAchievement> {
   }
 
   Widget buildMediaCol() {
+    if (widget.achievement.mediaItems.length == 0) {
+      return Text("No media");
+    }
     return Column(
       children: widget.achievement.mediaItems.map((mi) => Padding(
         padding: const EdgeInsets.all(4.0),

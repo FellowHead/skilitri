@@ -15,9 +15,8 @@ import 'package:video_player/video_player.dart';
 import 'achievements.dart';
 
 class Achievement extends TreeNeeder with Child {
-  String comment;
+  String comment = "";
   List<MediaItem> mediaItems = [];
-  Set<Node> influenced;
 
   Achievement(SkillTree tree) : super(tree);
 
@@ -378,6 +377,9 @@ class Node extends Parent with Child { // aka Skill
 
   Widget getChildrenInfo(BuildContext context, ValueNotifier notifier) {
     List<Achievement> data = List.from(getDescendants().where((a) => a is Achievement));
+    if (data.length == 0) {
+      return Text("No connected achievements");
+    }
     data.sort((a, b) => b.creationDate.millisecondsSinceEpoch - a.creationDate.millisecondsSinceEpoch);
     return Column(
       children: data.map((d) =>
