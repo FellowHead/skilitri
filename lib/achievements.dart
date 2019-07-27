@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
+import 'package:skilitri/theme.dart';
 import 'package:skilitri/tree.dart';
 
 import 'main.dart';
@@ -101,6 +103,14 @@ class _EditAchievementState extends State<EditAchievement> {
         persistentFooterButtons: <Widget>[
           FlatButton(
             shape: StadiumBorder(),
+            child: Text("Delete", style: TextStyle(color: invalid)),
+            onPressed: () => {
+              widget.achievement.remove(),
+              Navigator.pop(context, true)
+            },
+          ),
+          FlatButton(
+            shape: StadiumBorder(),
             child: Row(
               children: <Widget>[
                 Icon(Icons.link),
@@ -111,14 +121,6 @@ class _EditAchievementState extends State<EditAchievement> {
               Navigator.push(context, MaterialPageRoute(
                   builder: (ctx) => LinkAchievement(achievement: widget.achievement, skilitri: widget.skilitri)
               ))
-            },
-          ),
-          FlatButton(
-            shape: StadiumBorder(),
-            child: Text("Delete"),
-            onPressed: () => {
-              widget.achievement.remove(),
-              Navigator.pop(context, true)
             },
           ),
         ],

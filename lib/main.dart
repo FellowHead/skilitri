@@ -8,6 +8,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:skilitri/theme.dart';
 //import 'package:fluttery_audio/fluttery_audio.dart';
 import 'package:skilitri/tree.dart';
 import 'package:matrix_gesture_detector/matrix_gesture_detector.dart';
@@ -22,11 +23,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'skilitri',
       theme: ThemeData(
-        primarySwatch: Colors.teal,
-        primaryColorLight: Color(0xff90ffa0),
-        primaryColor: Color(0xff60dcaf),
-        primaryColorDark: Color(0xffd0e0e0),
-        backgroundColor: Color(0xffa0a0a0),
+        primarySwatch: Colors.indigo,
+        //primaryColor: Colors.amber[100],
       ),
       home: Skilitri()
     );
@@ -272,9 +270,7 @@ class SkilitriState extends State<Skilitri> {
                     width: double.infinity,
                     height: double.infinity,
                     alignment: Alignment.topLeft,
-                    color: Theme
-                        .of(context)
-                        .backgroundColor,
+                    color: viewportBackground,
                     child: AnimatedBuilder(
                         animation: notifier,
                         builder: (ctx, child) {
@@ -326,7 +322,7 @@ class SkilitriState extends State<Skilitri> {
                 padding: EdgeInsets.zero,
                 children: <Widget>[
                   DrawerHeader(
-                    child: Text("boi, look at deez achievements"),
+                    child: Text("boi, look at deez achievements", style: lightStyle,),
                     decoration: BoxDecoration(
                       color: Theme.of(context).primaryColor
                     ),
@@ -337,9 +333,9 @@ class SkilitriState extends State<Skilitri> {
                       onPressed: () => {
                         tree.addAchievementThroughUser(context, this)
                       },
-                      child: Text("Add achievement"),
+                      child: Text("Add achievement", style: lightStyle,),
                       shape: StadiumBorder(),
-                      color: Theme.of(context).primaryColor,
+                        color: Theme.of(context).primaryColor
                     ),
                   )
                 ]..addAll(tree.getSortedAchievements().map((a) => a.render(context, this)).toList()),

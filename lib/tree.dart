@@ -4,6 +4,7 @@ import 'dart:io';
 //import 'package:audio_recorder/audio_recorder.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_sound/android_encoder.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -11,6 +12,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:skilitri/main.dart';
+import 'package:skilitri/theme.dart';
 import 'package:video_player/video_player.dart';
 
 import 'achievements.dart';
@@ -308,15 +310,12 @@ class Node extends Parent with Child { // aka Skill
   }
 
   Widget render(BuildContext context, ValueNotifier notifier, SelectionType sel) {
-    ThemeData theme = Theme.of(context);
-
     return Container(
       decoration: BoxDecoration(
-          color: Color(0xff7030d0).withOpacity(isDragged ? 1.0 : 0.75),
+          color: nodeColor.withOpacity(isDragged ? 1.0 : 0.75),
           border: Border.all(width: 5,
               color: sel == SelectionType.None ? Color(0x0) : (sel ==
-                  SelectionType.Focused ? theme.primaryColor : theme
-                  .primaryColorDark)),
+                  SelectionType.Focused ? nodeFocused : nodeSelected)),
           boxShadow: [
             BoxShadow(
                 blurRadius: 25,
@@ -333,7 +332,7 @@ class Node extends Parent with Child { // aka Skill
             padding: EdgeInsets.all(32.0),
             child: Text(title,
               style: TextStyle(
-                  color: Colors.white,
+                  color: nodeTitle,
                   fontSize: 20.0
               ),
             ),
@@ -652,7 +651,19 @@ class ImageItem extends FileMediaItem {
 
   @override
   Widget getPostPreview(BuildContext context, ValueNotifier notif) {
-    return Image.file(file, height: 200);
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.black,
+          width: 1.0
+        ),
+        borderRadius: BorderRadius.circular(5.0)
+      ),
+        child: Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: Image.file(file, height: 200),
+        )
+    );
   }
 
   @override
