@@ -7,7 +7,7 @@ import 'package:skilitri/tree.dart';
 import 'main.dart';
 
 class EditAchievement extends StatefulWidget {
-  final Achievement achievement;
+  final AchievementNode achievement;
 
   EditAchievement(this.achievement);
 
@@ -20,7 +20,7 @@ class _EditAchievementState extends State<EditAchievement> {
 
   @override
   initState() {
-    _comment = TextEditingController(text: widget.achievement.comment);
+    _comment = TextEditingController(text: widget.achievement.title);
     super.initState();
   }
 
@@ -35,9 +35,9 @@ class _EditAchievementState extends State<EditAchievement> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () {
-        if (widget.achievement.comment == "" && !widget.achievement.hasItems) {
+        if (widget.achievement.title == "" && !widget.achievement.hasItems) {
           print("deleting because of no comment");
-          widget.achievement.remove();
+          widget.achievement.remove(false);
           Navigator.pop(context, true);
         } else {
           Navigator.pop(context);
@@ -59,7 +59,7 @@ class _EditAchievementState extends State<EditAchievement> {
                     maxLines: null,
                     controller: _comment,
                     onChanged: (s) => {
-                      widget.achievement.comment = s
+                      widget.achievement.title = s
                     },
                     decoration: InputDecoration(
                       hintText: "Add a comment..."
@@ -107,7 +107,7 @@ class _EditAchievementState extends State<EditAchievement> {
             shape: StadiumBorder(),
             child: Text("Delete", style: TextStyle(color: invalid)),
             onPressed: () => {
-              widget.achievement.remove(),
+              widget.achievement.remove(false),
               Navigator.pop(context, true)
             },
           ),
@@ -176,7 +176,7 @@ class _EditAchievementState extends State<EditAchievement> {
 }
 
 class LinkAchievement extends StatefulWidget {
-  final Achievement achievement;
+  final AchievementNode achievement;
 
   const LinkAchievement({Key key, this.achievement}) : super(key: key);
 

@@ -14,32 +14,35 @@ import 'package:video_player/video_player.dart';
 
 import 'achievements.dart';
 
-class Achievement extends TreeNeeder with Child {
-  String comment = "";
+class AchievementNode extends Node {
+  static const String _TYPENAME = "achievement";
   List<MediaItem> _mediaItems = [];
+
+  @override
+  String _getType() {
+    return _TYPENAME;
+  }
 
   bool get hasItems => _mediaItems.length > 0;
   List<MediaItem> copyItems() => _mediaItems.toList(growable: false);
 
   void addItem(MediaItem mi) {
-    mi.onDeletion = () {
+    mi._onDeletion = () {
       _mediaItems.remove(mi);
     };
     _mediaItems.add(mi);
   }
 
-  Achievement(SkillTree tree) : super(tree);
+  AchievementNode(String title, SkillTree tree) : super(title: title, tree: tree);
 
   Map<String, dynamic> toJson() =>
       super.toJson()
         ..addAll({
-          'comment': comment,
           'media': _mediaItems.map((mi) => mi.toJson()).toList(growable: false)
         });
 
-  Achievement.fromJson(Map<String, dynamic> json, SkillTree tree)
-      : comment = json['comment'],
-        _mediaItems = List.from(json['media'])
+  AchievementNode.fromJson(Map<String, dynamic> json, SkillTree tree)
+      : _mediaItems = List.from(json['media'])
             .map((m) => MediaItem._decipher(m))
             .toList(),
         super.fromJson(json, tree);
@@ -50,7 +53,7 @@ class Achievement extends TreeNeeder with Child {
         children: <Widget>[
           Text(SkillTree.dateToBeautiful(creationDate), style: TextStyle(color: Colors.black38),),
           Text(
-            comment,
+            title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -69,59 +72,49 @@ class Achievement extends TreeNeeder with Child {
     );
   }
 
-  void remove() {
-    for (Node p in _parents) {
-      p.children.remove(this);
-    }
-    tree.achievements.remove(this);
-    _parents = null;
-  }
-
   @override
-  String toString() {
-    return "Achievement($comment)";
+  bool _canHaveChildren() {
+    return false;
   }
 }
 
 class SkillTree {
   Set<Node> nodes = {};
   Map<Node, List<int>> _childMap;
-  Set<Achievement> achievements = {};
-
   Map<int, Child> _ids = Map();
 
-  List<Achievement> getSortedAchievements() {
-    return achievements.toList(growable: false)..sort(
+  List<AchievementNode> getAchievements() => List.from(nodes.where((test) => test is AchievementNode), growable: false);
+
+  List<AchievementNode> getSortedAchievements() {
+    return getAchievements()..sort(
             (a, b) => b.creationDate.millisecondsSinceEpoch - a.creationDate.millisecondsSinceEpoch);
   }
 
   SkillTree();
 
-  Future<Achievement> addAchievementThroughUser(BuildContext context) async {
-    Achievement ach = Achievement(this);
+  Future<AchievementNode> addAchievementThroughUser(BuildContext context) async {
+    AchievementNode ach = AchievementNode("", this);
     dynamic result = await Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => EditAchievement(ach))
     );
     if (result == null) {
-      achievements.add(ach);
-      print("added :thumbsup:");
+      nodes.add(ach);
       return ach;
     } else {
       return null;
     }
   }
 
-  Node addNode(String title, Offset position) {
-    Node n = Node(title: title, position: position, tree: this);
+  SkillNode addSkillNode(String title, Offset position) {
+    SkillNode n = SkillNode(title: title, position: position, tree: this);
     nodes.add(n);
     return n;
   }
 
   SkillTree.fromJson(Map<String, dynamic> json) {
     _childMap = {};
-    nodes = (json['nodes'] as List<dynamic>).map((f) => Node.fromJson(f, this)).toSet();
-    achievements = (json['achievements'] as List<dynamic>).map((f) => Achievement.fromJson(f, this)).toSet();
+    nodes = (json['nodes'] as List<dynamic>).map((j) => Node.decipher(j, this)).toSet();
 
     _childMap.forEach((ch, childrenIDs) {
       childrenIDs.forEach((i) => {
@@ -134,19 +127,13 @@ class SkillTree {
     int _counter = 0;
     _ids = Map();
     _ids.addEntries(nodes.map((n) => MapEntry(_counter++, n)));
-    _ids.addEntries(achievements.map((n) => MapEntry(_counter++, n)));
   }
 
   Map<String, dynamic> toJson() {
     _rearrangeIds();
     return {
       'nodes': nodes.map((f) => f.toJson()).toList(growable: false),
-      'achievements': achievements.map((a) => a.toJson()).toList(growable: false)
     };
-  }
-
-  Set<Achievement> getConnectedAchievements(Node n) {
-    return n.getDescendants().where((ch) => ch is Achievement);
   }
 
   static String getWeekdayName(int wekd) {
@@ -210,33 +197,41 @@ class TreeNeeder {
       };
 }
 
-class Parent extends TreeNeeder {
+abstract class Parent extends TreeNeeder {
   Set<Child> children = {};
 
   Parent(SkillTree tree, [this.children]) : super(tree) {
-    if (children == null) {
-      children = {};
-    } else {
-      if (tree != null) {
-        tree.nodes.addAll(children.where((ch) => ch is Node));
+    if (_canHaveChildren()) {
+      if (children == null) {
+        children = {};
+      } else {
+        if (tree != null) {
+          tree.nodes.addAll(children.where((ch) => ch is Node));
+        }
+        for (Node n in children) {
+          n._parents.add(this);
+        }
       }
-      for (Node n in children) {
-        n._parents.add(this);
-      }
+      this.children = children;
     }
-    this.children = children;
   }
 
+  bool _canHaveChildren();
+
   void addChild(Child n) {
+    if (!_canHaveChildren())
+      return;
     n._parents.add(this);
     children.add(n);
   }
 
   Set<Child> getDescendants() {
+    if (!_canHaveChildren())
+      return children; // which is {}
     Set<Child> out = Set();
     if (children.length > 0) {
       for (Child c in children) {
-        if (c is Parent) {
+        if (c is Parent && (c as Parent)._canHaveChildren()) {
           out.addAll((c as Parent).getDescendants());
         }
         out.add(c);
@@ -245,8 +240,26 @@ class Parent extends TreeNeeder {
     return out;
   }
 
+  void unlinkChild(Child n) {
+    if (!_canHaveChildren())
+      return;
+    children.remove(n);
+    n._parents.remove(this);
+  }
+
+  Map<String, dynamic> toJson() {
+    if (_canHaveChildren()) {
+      return super.toJson()..addAll({
+        'children': children.map((f) => (f as TreeNeeder)._getIdAsChild()).toList(growable: false)
+      });
+    }
+    return super.toJson();
+  }
+
   Parent.fromJson(Map<String, dynamic> json, SkillTree tree) : super.fromJson(json, tree) {
-    tree._childMap.putIfAbsent(this, () => List<int>.from(json['children']));
+    if (_canHaveChildren()) {
+      tree._childMap.putIfAbsent(this, () => List<int>.from(json['children']));
+    }
   }
 }
 
@@ -274,46 +287,133 @@ class Child { // possible child of multiple things
     }
     _parents.clear();
   }
-}
 
-class Node extends Parent with Child { // aka Skill
-  String title;
-  Offset position;
-  bool isDragged = false;
-
-  void unlinkChild(Child n) {
-    children.remove(n);
-    n._parents.remove(this);
+  void addParent(Parent n) {
+    n.addChild(this);
   }
 
   void unlinkParent(Parent n) {
     _parents.remove(n);
     n.children.remove(this);
   }
+}
 
-  Node({@required String title, @required Offset position, @required SkillTree tree, Set<Node> children}) : super(tree, children) {
-    this.title = title;
-    this.position = position;
+abstract class Node extends Parent with Child {
+  String title;
+
+  Node({@required this.title, @required SkillTree tree, Set<Node> children}) : super(tree, children) {
     creationDate = DateTime.now();
+  }
+
+  static Node decipher(Map<String, dynamic> json, SkillTree tree) {
+    switch (json["type"]) {
+      case SkillNode._TYPENAME: return SkillNode.fromJson(json, tree);
+      case AchievementNode._TYPENAME: return AchievementNode.fromJson(json, tree);
+    }
+    print("oh well, unknown node type ${json['type']}");
+    return null;
   }
 
   Node.fromJson(Map<String, dynamic> json, SkillTree tree)
       : title = json['title'],
-        position = Offset(json['position']['x'], json['position']['y']),
         super.fromJson(json, tree);
 
-  Map<String, dynamic> toJson() => super.toJson()..addAll({
+  Map<String, dynamic> toJson() {
+    return super.toJson()..addAll({
+        'type': _getType(),
         'title': title,
-        'position': {
-          'x': position.dx,
-          'y': position.dy
-        },
-        'children': children.map((f) => (f as TreeNeeder)._getIdAsChild()).toList(growable: false),
       });
-
-  void addParent(Node n) {
-    n.addChild(this);
   }
+
+  String _getType();
+
+  void displayInfo(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(
+        builder: (ctx) => NodeInfo(node: this)
+    ));
+  }
+
+  @override
+  String toString() {
+    return "Node($title)";
+  }
+
+  void remove(bool keepChildren) {
+    if (_canHaveChildren()) {
+      if (keepChildren) {
+        for (Child c in children.toSet()) {
+          for (Node p in _parents) {
+            p.addChild(c);
+          }
+        }
+      } else {
+        for (Child c in children.toSet()) {
+          if (c is Node) {
+            c.remove(false);
+          }
+        }
+      }
+      for (Child c in children.toSet()) {
+        c._parents.remove(this);
+      }
+      children = {};
+    }
+    for (Node p in _parents) {
+      p.children.remove(this);
+    }
+    tree.nodes.remove(this);
+    _parents = null;
+  }
+
+  Widget getChildrenInfo(BuildContext context, ValueNotifier notifier) {
+    List<AchievementNode> data = List.from(getDescendants().where((a) => a is AchievementNode));
+    if (data.length == 0) {
+      return Text("No connected achievements yet");
+    }
+    data.sort((a, b) => b.creationDate.millisecondsSinceEpoch - a.creationDate.millisecondsSinceEpoch);
+    return Column(
+      children: data.map((d) =>
+          ListTile(
+            title: Container(
+              height: 50,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: d._mediaItems.map((mi) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                  child: mi.getInfoPreview(context, notifier),
+                )).toList(),
+              ),
+            ),
+            onTap: () => {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (ctx) => EditAchievement(d)
+              ))
+            },
+            leading: Container(
+              width: 100,
+                child: Text(d.title, overflow: TextOverflow.fade,)
+            ),
+          )).toList(),
+    );
+  }
+}
+
+abstract class VisibleNode extends Node {
+  Offset position;
+  bool isDragged = false;
+
+  VisibleNode({@required String title, @required this.position, @required SkillTree tree, Set<Node> children})
+      : super(title: title, tree: tree, children: children);
+
+  VisibleNode.fromJson(Map<String, dynamic> json, SkillTree tree)
+      : position = Offset(json['position']['x'], json['position']['y']), super.fromJson(json, tree);
+
+  Map<String, dynamic> toJson() => super.toJson()..addAll({
+    'position': {
+      'x': position.dx,
+      'y': position.dy
+    },
+  });
 
   Widget render(BuildContext context, ValueNotifier notifier, SelectionType sel) {
     return Container(
@@ -346,81 +446,29 @@ class Node extends Parent with Child { // aka Skill
       ),
     );
   }
+}
 
-  void displayInfo(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(
-        builder: (ctx) => NodeInfo(node: this)
-    ));
-  }
+class SkillNode extends VisibleNode {
+  static const String _TYPENAME = "skill";
 
-  bool check = false;
+  SkillNode({@required String title, @required Offset position, @required SkillTree tree, Set<Node> children})
+      : super(title: title, position: position, tree: tree, children: children);
+
+  SkillNode.fromJson(Map<String, dynamic> json, SkillTree tree) : super.fromJson(json, tree);
 
   @override
-  String toString() {
-    return "Node($title)";
+  String _getType() {
+    return _TYPENAME;
   }
 
-  void remove(bool keepChildren) {
-    if (keepChildren) {
-      for (Child c in children.toSet()) {
-        for (Node p in _parents) {
-          p.addChild(c);
-        }
-      }
-    } else {
-      for (Child c in children.toSet()) {
-        if (c is Node) {
-          c.remove(false);
-        }
-      }
-    }
-    for (Child c in children.toSet()) {
-      c._parents.remove(this);
-    }
-    children = {};
-    for (Node p in _parents) {
-      p.children.remove(this);
-    }
-    tree.nodes.remove(this);
-    _parents = null;
-  }
-
-  Widget getChildrenInfo(BuildContext context, ValueNotifier notifier) {
-    List<Achievement> data = List.from(getDescendants().where((a) => a is Achievement));
-    if (data.length == 0) {
-      return Text("No connected achievements");
-    }
-    data.sort((a, b) => b.creationDate.millisecondsSinceEpoch - a.creationDate.millisecondsSinceEpoch);
-    return Column(
-      children: data.map((d) =>
-          ListTile(
-            title: Container(
-              height: 50,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: d._mediaItems.map((mi) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                  child: mi.getInfoPreview(context, notifier),
-                )).toList(),
-              ),
-            ),
-            onTap: () => {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (ctx) => EditAchievement(d)
-              ))
-            },
-            leading: Container(
-              width: 100,
-                child: Text(d.comment, overflow: TextOverflow.fade,)
-            ),
-          )).toList(),
-    );
+  @override
+  bool _canHaveChildren() {
+    return true;
   }
 }
 
-
 abstract class MediaItem {
-  void Function() onDeletion;
+  void Function() _onDeletion;
 
   MediaItem();
   
@@ -434,14 +482,14 @@ abstract class MediaItem {
 
   void delete({ValueNotifier notif}) {
     _del();
-    onDeletion();
+    _onDeletion();
     notif?.value++;
   }
 
   static MediaItem _decipher(Map<String, dynamic> json) {
     switch (json['type']) {
-      case ImageItem.TYPENAME: return ImageItem.fromJson(json);
-      case AudioItem.TYPENAME: return AudioItem.fromJson(json);
+      case ImageItem._TYPENAME: return ImageItem.fromJson(json);
+      case AudioItem._TYPENAME: return AudioItem.fromJson(json);
     }
     print("error? no media item created from json");
     return null;
@@ -535,7 +583,7 @@ class VideoItem extends FileMediaItem {
 }
 
 class AudioItem extends FileMediaItem {
-  static const String TYPENAME = "audio";
+  static const String _TYPENAME = "audio";
   static FlutterSound flutterSound = FlutterSound();
   static double currentPosition;
   bool isPlaying = false;
@@ -587,7 +635,7 @@ class AudioItem extends FileMediaItem {
 
   @override
   String _getType() {
-    return TYPENAME;
+    return _TYPENAME;
   }
 
   @override
@@ -695,7 +743,7 @@ class AudioItem extends FileMediaItem {
 }
 
 class ImageItem extends FileMediaItem {
-  static const String TYPENAME = "image";
+  static const String _TYPENAME = "image";
 
   ImageItem(File file) : super(file);
 
@@ -728,7 +776,7 @@ class ImageItem extends FileMediaItem {
 
   @override
   String _getType() {
-    return TYPENAME;
+    return _TYPENAME;
   }
 
   static Future<ImageItem> getImage(ImageSource source, BuildContext context) async {

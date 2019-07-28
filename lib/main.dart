@@ -44,9 +44,9 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
   Matrix4 matrix = Matrix4.identity();
   ValueNotifier<int> notifier = ValueNotifier(0);
   bool inSelectionMode = false;
-  Set<Node> selection = {};
-  Node active;
-  Node dragged;
+  Set<VisibleNode> selection = {};
+  VisibleNode active;
+  VisibleNode dragged;
   static SkilitriState instance;
 
   @override
@@ -94,11 +94,11 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
 //    );
 
     tree = SkillTree()
-      ..addNode("Node", Offset(0, 0))
-      ..addNode("Nother Node", Offset(0, -200));
+      ..addSkillNode("Node", Offset(0, 0))
+      ..addSkillNode("Nother Node", Offset(0, -200));
   }
 
-  Widget buildNode(Node n, Function onTap, Function onLongPress, SelectionType sel) {
+  Widget buildNode(VisibleNode n, Function onTap, Function onLongPress, SelectionType sel) {
     Matrix4 ma = matrix.clone();
     ma.translate(n.position.dx, -n.position.dy);
 
@@ -194,7 +194,7 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
   }
 
   void addNode(String title, Offset position, {Node parent, Node child}) {
-    Node nNode = tree.addNode(title, position);
+    Node nNode = tree.addSkillNode(title, position);
     if (parent != null) { nNode.addParent(parent); }
     if (child != null) { nNode.addChild(child); }
     select(nNode, true);
@@ -207,7 +207,7 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
       final directory = await getApplicationDocumentsDirectory();
       //final file = File('${directory.path}/tree.fwd');
       //final file = File('${directory.path}/baum.fwd');
-      final file = File('${directory.path}/uwu.fwd');
+      final file = File('${directory.path}/kerpooch.fwd');
       String text = await file.readAsString();
       print(text);
       setState(() => {
@@ -220,7 +220,7 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
 
   _save() async {
     final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/uwu.fwd');
+    final file = File('${directory.path}/kerpooch.fwd');
     final text = jsonEncode(tree.toJson());
     print(text);
     await file.writeAsString(text);
@@ -233,11 +233,6 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
       backgroundColor: Color(0x60000000),
       timeInSecForIos: 1,
     );
-  }
-
-  Future<bool> _onWillPop() {
-    exitSelectionMode();
-    return Future<bool>.value(false);
   }
 
   Widget buildViewport(Function(Node) onTap, Function(Node) onLongPress, SelectionType Function(Node) selectionType,
@@ -294,9 +289,7 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
                                   children: [
                                     buildCanvas(lineColor),
                                     Stack(
-                                      children: tree
-                                          .nodes
-                                          .map((n) =>
+                                      children: tree.nodes.where((test) => test is VisibleNode).map((n) =>
                                           buildNode(
                                               n,
                                               onTap != null ? () => onTap(n) : () => {},
@@ -324,7 +317,10 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
     }
 
     return WillPopScope(
-        onWillPop: _onWillPop,
+        onWillPop: () {
+          exitSelectionMode();
+          return Future<bool>.value(false);
+        },
         child: Scaffold(
             appBar: AppBar(
               title: Text('skilitri'),
@@ -539,7 +535,7 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
     );
   }
 
-  void insertNode(Node parent, Node child) {
+  void insertNode(VisibleNode parent, VisibleNode child) {
     onAddNode((parent.position + child.position) / 2,
         parent: parent,
         child: child
@@ -614,15 +610,13 @@ class ShapesPainter extends CustomPainter {
     final paint = Paint();
     paint.strokeWidth = 5;
 
-    for (Node n in root.nodes) {
-      for (Child c in n.children) {
-        if (c is Node) {
-          paint.color = lineColor(n, c);
-          Offset start = c.position.scale(1, -1);
-          Offset end = n.position.scale(1, -1);
-          canvas.drawLine(start, end, paint);
-          canvas.drawCircle(Offset.lerp(start, end, 0.7), 25, paint);
-        }
+    for (VisibleNode n in root.nodes.where((n) => n is VisibleNode)) {
+      for (VisibleNode c in n.children.where((n) => n is VisibleNode)) {
+        paint.color = lineColor(n, c);
+        Offset start = c.position.scale(1, -1);
+        Offset end = n.position.scale(1, -1);
+        canvas.drawLine(start, end, paint);
+        canvas.drawCircle(Offset.lerp(start, end, 0.7), 25, paint);
       }
     }
   }
