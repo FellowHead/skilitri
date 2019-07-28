@@ -15,6 +15,13 @@ import 'package:matrix_gesture_detector/matrix_gesture_detector.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+String clearEnd(String input) {
+  if (input[input.length - 1] == " ") {
+    return input.substring(0, input.lastIndexOf(RegExp(r"[^ ]")) + 1);
+  }
+  return input;
+}
+
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
@@ -176,13 +183,17 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
               hintText: "Enter node name..."
             ),
             controller: controller,
+            onEditingComplete: () => {
+              controller.text = clearEnd(controller.text),
+              FocusScope.of(ctx).unfocus()
+            },
             autofocus: true,
           ),
           actions: <Widget>[
             FlatButton(
               child: Text("OK"),
               onPressed: () => {
-                addNode(controller.text, position, parent: parent, child: child),
+                addNode(clearEnd(controller.text), position, parent: parent, child: child),
                 Navigator.pop(ctx, true)
               },
             )

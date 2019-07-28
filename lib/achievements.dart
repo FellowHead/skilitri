@@ -59,7 +59,10 @@ class _EditAchievementState extends State<EditAchievement> {
                     maxLines: null,
                     controller: _comment,
                     onChanged: (s) => {
-                      widget.achievement.title = s
+                      widget.achievement.title = clearEnd(s)
+                    },
+                    onEditingComplete: () => {
+                      _comment.text = clearEnd(_comment.text)
                     },
                     decoration: InputDecoration(
                       hintText: "Add a comment..."

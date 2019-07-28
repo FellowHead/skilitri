@@ -13,6 +13,7 @@ import 'package:skilitri/theme.dart';
 import 'package:video_player/video_player.dart';
 
 import 'achievements.dart';
+import 'main.dart';
 
 class AchievementNode extends Node {
   static const String _TYPENAME = "achievement";
@@ -301,7 +302,8 @@ class Child { // possible child of multiple things
 abstract class Node extends Parent with Child {
   String title;
 
-  Node({@required this.title, @required SkillTree tree, Set<Node> children}) : super(tree, children) {
+  Node({@required String title, @required SkillTree tree, Set<Node> children}) : super(tree, children) {
+    this.title = clearEnd(title);
     creationDate = DateTime.now();
   }
 
@@ -861,7 +863,11 @@ class NodeInfoState extends State<NodeInfo> {
                             ),
                             onChanged: (s) =>
                             {
-                              widget.node.title = s
+                              widget.node.title = clearEnd(s)
+                            },
+                            onEditingComplete: () => {
+                              cTitle.text = clearEnd(cTitle.text),
+                              FocusScope.of(context).unfocus()
                             },
                             controller: cTitle
                         ),
