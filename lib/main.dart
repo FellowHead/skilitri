@@ -70,7 +70,7 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
     }
   }
 
-  void resetTree() {
+  void resetTree() async {
 //    tree = SkillTree(
 //        {
 //          Node(
@@ -100,9 +100,12 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
 //        }
 //    );
 
-    tree = SkillTree()
-      ..addSkillNode("Node", Offset(0, 0))
-      ..addSkillNode("Nother Node", Offset(0, -200));
+
+    if (!await _read()) {
+      tree = SkillTree()
+        ..addSkillNode("Node", Offset(0, 0))
+        ..addSkillNode("Nother Node", Offset(0, -200));
+    }
   }
 
   Widget buildNode(VisibleNode n, Function onTap, Function onLongPress, SelectionType sel) {
@@ -213,7 +216,7 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
 
   // I/O STUFF
 
-  _read() async {
+  Future<bool> _read() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
       //final file = File('${directory.path}/tree.fwd');
@@ -224,12 +227,14 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
       setState(() => {
         tree = SkillTree.fromJson(jsonDecode(text))
       });
+      return true;
     } on FileSystemException {
       print("Can't read file");
     }
+    return false;
   }
 
-  _save() async {
+  void _save() async {
     final directory = await getApplicationDocumentsDirectory();
     final file = File('${directory.path}/kerpooch.fwd');
     final text = jsonEncode(tree.toJson());
