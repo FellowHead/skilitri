@@ -3,12 +3,7 @@ import 'package:flutter/material.dart';
 
 const Color invalid = Color(0xFFff4888);
 const Color viewportBackground = Colors.grey;
-const TextStyle lightStyle = TextStyle(
-  color: Colors.white,
-  fontFamily: "Roboto"
-);
-
-//const Color drawer = Color(0xFF9fa8da);
+const TextStyle lightStyle = TextStyle(color: Colors.white);
 
 const Color nodeColor = Colors.indigo;
 const Color nodeTitle = Colors.white;

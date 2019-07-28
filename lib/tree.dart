@@ -25,6 +25,7 @@ class AchievementNode extends Node {
   }
 
   bool get hasItems => _mediaItems.length > 0;
+
   List<MediaItem> copyItems() => _mediaItems.toList(growable: false);
 
   void addItem(MediaItem mi) {
@@ -34,16 +35,16 @@ class AchievementNode extends Node {
     _mediaItems.add(mi);
   }
 
-  AchievementNode(String title, SkillTree tree) : super(title: title, tree: tree);
+  AchievementNode(String title, SkillTree tree)
+      : super(title: title, tree: tree);
 
-  Map<String, dynamic> toJson() =>
-      super.toJson()
-        ..addAll({
-          'media': _mediaItems.map((mi) => mi.toJson()).toList(growable: false)
-        });
+  Map<String, dynamic> toJson() => super.toJson()
+    ..addAll({
+      "media": _mediaItems.map((mi) => mi.toJson()).toList(growable: false)
+    });
 
   AchievementNode.fromJson(Map<String, dynamic> json, SkillTree tree)
-      : _mediaItems = List.from(json['media'])
+      : _mediaItems = List.from(json["media"])
             .map((m) => MediaItem._decipher(m))
             .toList(),
         super.fromJson(json, tree);
@@ -52,7 +53,10 @@ class AchievementNode extends Node {
     return ListTile(
       title: Column(
         children: <Widget>[
-          Text(SkillTree.dateToBeautiful(creationDate), style: TextStyle(color: Colors.black38),),
+          Text(
+            SkillTree.dateToBeautiful(creationDate),
+            style: TextStyle(color: Colors.black38),
+          ),
           Text(
             title,
             maxLines: 1,
@@ -60,15 +64,10 @@ class AchievementNode extends Node {
           ),
         ],
       ),
-      onTap: () =>
-      {
-        Navigator.push(context, MaterialPageRoute(
-            builder: (ctx) => EditAchievement(this)
-        )).then((res) => {
-          if (res != null) {
-
-          }
-        })
+      onTap: () => {
+        Navigator.push(context,
+                MaterialPageRoute(builder: (ctx) => EditAchievement(this)))
+            .then((res) => {if (res != null) {}})
       },
     );
   }
@@ -84,21 +83,24 @@ class SkillTree {
   Map<Node, List<int>> _childMap;
   Map<int, Child> _ids = Map();
 
-  List<AchievementNode> getAchievements() => List.from(nodes.where((test) => test is AchievementNode), growable: false);
+  List<AchievementNode> getAchievements() =>
+      List.from(nodes.where((test) => test is AchievementNode),
+          growable: false);
 
   List<AchievementNode> getSortedAchievements() {
-    return getAchievements()..sort(
-            (a, b) => b.creationDate.millisecondsSinceEpoch - a.creationDate.millisecondsSinceEpoch);
+    return getAchievements()
+      ..sort((a, b) =>
+          b.creationDate.millisecondsSinceEpoch -
+          a.creationDate.millisecondsSinceEpoch);
   }
 
   SkillTree();
 
-  Future<AchievementNode> addAchievementThroughUser(BuildContext context) async {
+  Future<AchievementNode> addAchievementThroughUser(
+      BuildContext context) async {
     AchievementNode ach = AchievementNode("", this);
     dynamic result = await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => EditAchievement(ach))
-    );
+        context, MaterialPageRoute(builder: (context) => EditAchievement(ach)));
     if (result == null) {
       nodes.add(ach);
       return ach;
@@ -115,12 +117,12 @@ class SkillTree {
 
   SkillTree.fromJson(Map<String, dynamic> json) {
     _childMap = {};
-    nodes = (json['nodes'] as List<dynamic>).map((j) => Node.decipher(j, this)).toSet();
+    nodes = (json["nodes"] as List<dynamic>)
+        .map((j) => Node.decipher(j, this))
+        .toSet();
 
     _childMap.forEach((ch, childrenIDs) {
-      childrenIDs.forEach((i) => {
-        ch.addChild(_ids[i])
-      });
+      childrenIDs.forEach((i) => {ch.addChild(_ids[i])});
     });
   }
 
@@ -133,25 +135,32 @@ class SkillTree {
   Map<String, dynamic> toJson() {
     _rearrangeIds();
     return {
-      'nodes': nodes.map((f) => f.toJson()).toList(growable: false),
+      "nodes": nodes.map((f) => f.toJson()).toList(growable: false),
     };
   }
 
   static String getWeekdayName(int wekd) {
     switch (wekd) {
-      case 1: return "Monday";
-      case 2: return "Tuesday";
-      case 3: return "Wednesday";
-      case 4: return "Thursday";
-      case 5: return "Friday";
-      case 6: return "Saturday";
-      case 7: return "Sunday";
+      case 1:
+        return "Monday";
+      case 2:
+        return "Tuesday";
+      case 3:
+        return "Wednesday";
+      case 4:
+        return "Thursday";
+      case 5:
+        return "Friday";
+      case 6:
+        return "Saturday";
+      case 7:
+        return "Sunday";
     }
     return "Pizza time ($wekd)";
   }
 
   static String _betterify(dynamic d) {
-    return d.toString().padLeft(2, '0');
+    return d.toString().padLeft(2, "0");
   }
 
   static String dateToBeautiful(DateTime dt) {
@@ -159,12 +168,7 @@ class SkillTree {
   }
 }
 
-enum SelectionType {
-  None,
-  Selected,
-  Focused,
-  Dragged
-}
+enum SelectionType { None, Selected, Focused, Dragged }
 
 class TreeNeeder {
   SkillTree tree;
@@ -186,15 +190,13 @@ class TreeNeeder {
   }
 
   TreeNeeder.fromJson(Map<String, dynamic> json, this.tree)
-      : creationDate = DateTime.fromMillisecondsSinceEpoch(
-      json['created']) {
-    tree._ids.putIfAbsent(json['id'], () => this as Child);
+      : creationDate = DateTime.fromMillisecondsSinceEpoch(json["created"]) {
+    tree._ids.putIfAbsent(json["id"], () => this as Child);
   }
 
-  Map<String, dynamic> toJson() =>
-      {
-        'id': _getIdAsChild(),
-        'created': creationDate.millisecondsSinceEpoch,
+  Map<String, dynamic> toJson() => {
+        "id": _getIdAsChild(),
+        "created": creationDate.millisecondsSinceEpoch,
       };
 }
 
@@ -220,15 +222,13 @@ abstract class Parent extends TreeNeeder {
   bool _canHaveChildren();
 
   void addChild(Child n) {
-    if (!_canHaveChildren())
-      return;
+    if (!_canHaveChildren()) return;
     n._parents.add(this);
     children.add(n);
   }
 
   Set<Child> getDescendants() {
-    if (!_canHaveChildren())
-      return children; // which is {}
+    if (!_canHaveChildren()) return children; // which is {}
     Set<Child> out = Set();
     if (children.length > 0) {
       for (Child c in children) {
@@ -242,33 +242,39 @@ abstract class Parent extends TreeNeeder {
   }
 
   void unlinkChild(Child n) {
-    if (!_canHaveChildren())
-      return;
+    if (!_canHaveChildren()) return;
     children.remove(n);
     n._parents.remove(this);
   }
 
   Map<String, dynamic> toJson() {
     if (_canHaveChildren()) {
-      return super.toJson()..addAll({
-        'children': children.map((f) => (f as TreeNeeder)._getIdAsChild()).toList(growable: false)
-      });
+      return super.toJson()
+        ..addAll({
+          "children": children
+              .map((f) => (f as TreeNeeder)._getIdAsChild())
+              .toList(growable: false)
+        });
     }
     return super.toJson();
   }
 
-  Parent.fromJson(Map<String, dynamic> json, SkillTree tree) : super.fromJson(json, tree) {
+  Parent.fromJson(Map<String, dynamic> json, SkillTree tree)
+      : super.fromJson(json, tree) {
     if (_canHaveChildren()) {
-      tree._childMap.putIfAbsent(this, () => List<int>.from(json['children']));
+      tree._childMap.putIfAbsent(this, () => List<int>.from(json["children"]));
     }
   }
 }
 
-class Child { // possible child of multiple things
+class Child {
+  // possible child of multiple things
   Set<Parent> _parents = {};
 
   Parent getFirstParent() => _parents.first;
+
   bool hasParent(Parent p) => _parents.contains(p);
+
   int get numParents => _parents.length;
 
   Set<Parent> getAscendants() {
@@ -302,37 +308,40 @@ class Child { // possible child of multiple things
 abstract class Node extends Parent with Child {
   String title;
 
-  Node({@required String title, @required SkillTree tree, Set<Node> children}) : super(tree, children) {
+  Node({@required String title, @required SkillTree tree, Set<Node> children})
+      : super(tree, children) {
     this.title = clearEnd(title);
     creationDate = DateTime.now();
   }
 
   static Node decipher(Map<String, dynamic> json, SkillTree tree) {
     switch (json["type"]) {
-      case SkillNode._TYPENAME: return SkillNode.fromJson(json, tree);
-      case AchievementNode._TYPENAME: return AchievementNode.fromJson(json, tree);
+      case SkillNode._TYPENAME:
+        return SkillNode.fromJson(json, tree);
+      case AchievementNode._TYPENAME:
+        return AchievementNode.fromJson(json, tree);
     }
-    print("oh well, unknown node type ${json['type']}");
+    print("oh well, unknown node type ${json["type"]}");
     return null;
   }
 
   Node.fromJson(Map<String, dynamic> json, SkillTree tree)
-      : title = json['title'],
+      : title = json["title"],
         super.fromJson(json, tree);
 
   Map<String, dynamic> toJson() {
-    return super.toJson()..addAll({
-        'type': _getType(),
-        'title': title,
+    return super.toJson()
+      ..addAll({
+        "type": _getType(),
+        "title": title,
       });
   }
 
   String _getType();
 
   void displayInfo(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(
-        builder: (ctx) => NodeInfo(node: this)
-    ));
+    Navigator.push(
+        context, MaterialPageRoute(builder: (ctx) => NodeInfo(node: this)));
   }
 
   @override
@@ -368,34 +377,42 @@ abstract class Node extends Parent with Child {
   }
 
   Widget getChildrenInfo(BuildContext context, ValueNotifier notifier) {
-    List<AchievementNode> data = List.from(getDescendants().where((a) => a is AchievementNode));
+    List<AchievementNode> data =
+        List.from(getDescendants().where((a) => a is AchievementNode));
     if (data.length == 0) {
       return Text("No connected achievements yet");
     }
-    data.sort((a, b) => b.creationDate.millisecondsSinceEpoch - a.creationDate.millisecondsSinceEpoch);
+    data.sort((a, b) =>
+        b.creationDate.millisecondsSinceEpoch -
+        a.creationDate.millisecondsSinceEpoch);
     return Column(
-      children: data.map((d) =>
-          ListTile(
-            title: Container(
-              height: 50,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: d._mediaItems.map((mi) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                  child: mi.getInfoPreview(context, notifier),
-                )).toList(),
-              ),
-            ),
-            onTap: () => {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (ctx) => EditAchievement(d)
+      children: data
+          .map((d) => ListTile(
+                title: Container(
+                  height: 50,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: d._mediaItems
+                        .map((mi) => Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 2.0),
+                              child: mi.getInfoPreview(context, notifier),
+                            ))
+                        .toList(),
+                  ),
+                ),
+                onTap: () => {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (ctx) => EditAchievement(d)))
+                },
+                leading: Container(
+                    width: 100,
+                    child: Text(
+                      d.title,
+                      overflow: TextOverflow.fade,
+                    )),
               ))
-            },
-            leading: Container(
-              width: 100,
-                child: Text(d.title, overflow: TextOverflow.fade,)
-            ),
-          )).toList(),
+          .toList(),
     );
   }
 }
@@ -404,48 +421,48 @@ abstract class VisibleNode extends Node {
   Offset position;
   bool isDragged = false;
 
-  VisibleNode({@required String title, @required this.position, @required SkillTree tree, Set<Node> children})
+  VisibleNode(
+      {@required String title,
+      @required this.position,
+      @required SkillTree tree,
+      Set<Node> children})
       : super(title: title, tree: tree, children: children);
 
   VisibleNode.fromJson(Map<String, dynamic> json, SkillTree tree)
-      : position = Offset(json['position']['x'], json['position']['y']), super.fromJson(json, tree);
+      : position = Offset(json["position"]["x"], json["position"]["y"]),
+        super.fromJson(json, tree);
 
-  Map<String, dynamic> toJson() => super.toJson()..addAll({
-    'position': {
-      'x': position.dx,
-      'y': position.dy
-    },
-  });
+  Map<String, dynamic> toJson() => super.toJson()
+    ..addAll({
+      "position": {"x": position.dx, "y": position.dy},
+    });
 
-  Widget render(BuildContext context, ValueNotifier notifier, SelectionType sel) {
+  Widget render(
+      BuildContext context, ValueNotifier notifier, SelectionType sel) {
     return Container(
       decoration: BoxDecoration(
           color: nodeColor.withOpacity(isDragged ? 1.0 : 0.75),
-          border: Border.all(width: 5,
-              color: sel == SelectionType.None ? Color(0x0) : (sel ==
-                  SelectionType.Focused ? nodeFocused : nodeSelected)),
+          border: Border.all(
+              width: 5,
+              color: sel == SelectionType.None
+                  ? Color(0x0)
+                  : (sel == SelectionType.Focused
+                      ? nodeFocused
+                      : nodeSelected)),
           boxShadow: [
-            BoxShadow(
-                blurRadius: 25,
-                spreadRadius: 5,
-                color: Colors.black26
-            )
+            BoxShadow(blurRadius: 25, spreadRadius: 5, color: Colors.black26)
           ],
-          borderRadius: BorderRadius.all(Radius.circular(10.0))
-      ),
+          borderRadius: BorderRadius.all(Radius.circular(10.0))),
       child: Center(
           widthFactor: 1.0,
           heightFactor: 1.0,
           child: Container(
             padding: EdgeInsets.all(32.0),
-            child: Text(title,
-              style: TextStyle(
-                  color: nodeTitle,
-                  fontSize: 20.0
-              ),
+            child: Text(
+              title,
+              style: TextStyle(color: nodeTitle, fontSize: 20.0),
             ),
-          )
-      ),
+          )),
     );
   }
 }
@@ -453,10 +470,15 @@ abstract class VisibleNode extends Node {
 class SkillNode extends VisibleNode {
   static const String _TYPENAME = "skill";
 
-  SkillNode({@required String title, @required Offset position, @required SkillTree tree, Set<Node> children})
+  SkillNode(
+      {@required String title,
+      @required Offset position,
+      @required SkillTree tree,
+      Set<Node> children})
       : super(title: title, position: position, tree: tree, children: children);
 
-  SkillNode.fromJson(Map<String, dynamic> json, SkillTree tree) : super.fromJson(json, tree);
+  SkillNode.fromJson(Map<String, dynamic> json, SkillTree tree)
+      : super.fromJson(json, tree);
 
   @override
   String _getType() {
@@ -473,14 +495,18 @@ abstract class MediaItem {
   void Function() _onDeletion;
 
   MediaItem();
-  
-  Map<String, dynamic> _addSpecifics();
-  Widget getPostPreview(BuildContext context, ValueNotifier notif);
-  Widget getInfoPreview(BuildContext context, ValueNotifier notif);
-  String _getType();
-  DateTime getLastModified();
-  void _del();
 
+  Map<String, dynamic> _addSpecifics();
+
+  Widget getPostPreview(BuildContext context, ValueNotifier notif);
+
+  Widget getInfoPreview(BuildContext context, ValueNotifier notif);
+
+  String _getType();
+
+  DateTime getLastModified();
+
+  void _del();
 
   void delete({ValueNotifier notif}) {
     _del();
@@ -489,17 +515,18 @@ abstract class MediaItem {
   }
 
   static MediaItem _decipher(Map<String, dynamic> json) {
-    switch (json['type']) {
-      case ImageItem._TYPENAME: return ImageItem.fromJson(json);
-      case AudioItem._TYPENAME: return AudioItem.fromJson(json);
+    switch (json["type"]) {
+      case ImageItem._TYPENAME:
+        return ImageItem.fromJson(json);
+      case AudioItem._TYPENAME:
+        return AudioItem.fromJson(json);
     }
     print("error? no media item created from json");
     return null;
   }
 
-  Map<String, dynamic> toJson() =>
-      {
-        'type': _getType(),
+  Map<String, dynamic> toJson() => {
+        "type": _getType(),
       }..addAll(_addSpecifics());
 }
 
@@ -508,7 +535,9 @@ abstract class FileMediaItem extends MediaItem {
 
   FileMediaItem(this.file) : super();
 
-  FileMediaItem.fromJson(Map<String, dynamic> json) : file = File(json['path']), super();
+  FileMediaItem.fromJson(Map<String, dynamic> json)
+      : file = File(json["path"]),
+        super();
 
   @override
   DateTime getLastModified() {
@@ -529,9 +558,7 @@ abstract class FileMediaItem extends MediaItem {
   void _onFileDelete();
 
   @override
-  Map<String, dynamic> _addSpecifics() => {
-    'path': file.path
-  };
+  Map<String, dynamic> _addSpecifics() => {"path": file.path};
 }
 
 class VideoItem extends FileMediaItem {
@@ -539,7 +566,8 @@ class VideoItem extends FileMediaItem {
 
   VideoItem(File file) : super(file);
 
-  VideoItem.throughUser(ImageSource source, BuildContext context) : super(null) {
+  VideoItem.throughUser(ImageSource source, BuildContext context)
+      : super(null) {
     recVideo(source, context, null);
   }
 
@@ -548,7 +576,8 @@ class VideoItem extends FileMediaItem {
     return TYPENAME;
   }
 
-  Future recVideo(ImageSource source, BuildContext context, ValueNotifier notif) async {
+  Future recVideo(
+      ImageSource source, BuildContext context, ValueNotifier notif) async {
     var video = await ImagePicker.pickVideo(source: source);
     Navigator.pop(context);
     if (video != null) {
@@ -569,15 +598,15 @@ class VideoItem extends FileMediaItem {
   @override
   Widget getPostPreview(BuildContext context, ValueNotifier notif) {
     if (controller == null) {
-      controller = VideoPlayerController.file(file)..initialize().then((_) => notif.value++);
+      controller = VideoPlayerController.file(file)
+        ..initialize().then((_) => notif.value++);
     }
 
-    return controller.value.initialized ? AspectRatio(
-      aspectRatio: controller.value.aspectRatio,
-      child: VideoPlayer(
-        controller
-      )
-    ) : Container();
+    return controller.value.initialized
+        ? AspectRatio(
+            aspectRatio: controller.value.aspectRatio,
+            child: VideoPlayer(controller))
+        : Container();
   }
 
   @override
@@ -608,11 +637,10 @@ class AudioItem extends FileMediaItem {
     print(directory);
 
     String path = await flutterSound.startRecorder(
-      "${directory.path}/${DateTime.now().millisecondsSinceEpoch}.aac",
-      androidEncoder: AndroidEncoder.AAC_ELD,
-      bitRate: 128000,
-      iosQuality: IosQuality.HIGH
-    );
+        "${directory.path}/${DateTime.now().millisecondsSinceEpoch}.aac",
+        androidEncoder: AndroidEncoder.AAC_ELD,
+        bitRate: 128000,
+        iosQuality: IosQuality.HIGH);
 
     return await showDialog(
         context: context,
@@ -620,19 +648,13 @@ class AudioItem extends FileMediaItem {
           return AlertDialog(
             title: Text("Recording audio..."),
             content: FlatButton(
-                onPressed: () =>
-                {
-                  flutterSound.stopRecorder().then((s) =>
-                  {
-                    Navigator.pop(
-                        ctx, AudioItem(File(path)))
-                  })
-                },
-                child: Text("Stop")
-            ),
+                onPressed: () => {
+                      flutterSound.stopRecorder().then(
+                          (s) => {Navigator.pop(ctx, AudioItem(File(path)))})
+                    },
+                child: Text("Stop")),
           );
-        }
-    );
+        });
   }
 
   @override
@@ -653,11 +675,11 @@ class AudioItem extends FileMediaItem {
         color: Theme.of(context).primaryColor,
       ),
       child: IconButton(
-        onPressed: () =>
-        {
+        onPressed: () => {
           _togglePlaying(),
         },
-        icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow, color: Colors.white),
+        icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow,
+            color: Colors.white),
       ),
     );
   }
@@ -674,20 +696,14 @@ class AudioItem extends FileMediaItem {
       await flutterSound.startPlayer(file.uri.toString());
       isPlaying = true;
 
-      flutterSound.onPlayerStateChanged.listen(
-          (status) {
-            if (status != null) {
-              duration = status.duration;
-              currentPosition = status.currentPosition;
-              //print("$currentPosition / $duration");
-            }
-            _notif.value++;
-          },
-          onDone: () =>
-          {
-            isPlaying = false,
-            _notif.value++
-          });
+      flutterSound.onPlayerStateChanged.listen((status) {
+        if (status != null) {
+          duration = status.duration;
+          currentPosition = status.currentPosition;
+          //print("$currentPosition / $duration");
+        }
+        _notif.value++;
+      }, onDone: () => {isPlaying = false, _notif.value++});
     }
   }
 
@@ -696,39 +712,37 @@ class AudioItem extends FileMediaItem {
     if (ModalRoute.of(context).isCurrent) {
       _notif = notif;
     }
-    Duration d = isPlaying ?
-    (_seekbarProgress == null ? Duration(milliseconds: currentPosition.toInt())
-        : Duration(milliseconds: (duration * _seekbarProgress).toInt()))
+    Duration d = isPlaying
+        ? (_seekbarProgress == null
+            ? Duration(milliseconds: currentPosition.toInt())
+            : Duration(milliseconds: (duration * _seekbarProgress).toInt()))
         : Duration.zero;
 
     return Row(
       children: <Widget>[
         IconButton(
-          onPressed: () =>
-          {
+          onPressed: () => {
             _togglePlaying(),
           },
           icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow),
         ),
         Expanded(
-          child: isPlaying ? Slider.adaptive(
-            onChangeStart: (v) => {
-              flutterSound.pausePlayer()
-            },
-            onChanged: (v) => {
-              _seekbarProgress = v
-            },
-            onChangeEnd: (v) => {
-              currentPosition = duration * _seekbarProgress,
-              _seekbarProgress = null,
-              flutterSound.seekToPlayer((duration * v).toInt()),
-              flutterSound.resumePlayer()
-            },
-            value: _seekbarProgress ?? currentPosition / duration,
-          ) : Slider.adaptive(
-            onChanged: null,
-            value: 0,
-          ),
+          child: isPlaying
+              ? Slider.adaptive(
+                  onChangeStart: (v) => {flutterSound.pausePlayer()},
+                  onChanged: (v) => {_seekbarProgress = v},
+                  onChangeEnd: (v) => {
+                    currentPosition = duration * _seekbarProgress,
+                    _seekbarProgress = null,
+                    flutterSound.seekToPlayer((duration * v).toInt()),
+                    flutterSound.resumePlayer()
+                  },
+                  value: _seekbarProgress ?? currentPosition / duration,
+                )
+              : Slider.adaptive(
+                  onChanged: null,
+                  value: 0,
+                ),
         ),
         Text("${d.inMinutes % Duration.minutesPerHour}:"
             "${(d.inSeconds % Duration.secondsPerMinute).toString().padLeft(2, "0")}")
@@ -758,20 +772,21 @@ class ImageItem extends FileMediaItem {
             children: <Widget>[
               IconButton(
                 onPressed: () => {
-                  getImage(ImageSource.camera, context).then((ii) => Navigator.pop(ctx, ii)),
+                  getImage(ImageSource.camera, context)
+                      .then((ii) => Navigator.pop(ctx, ii)),
                 },
                 icon: Icon(Icons.camera_alt),
               ),
               IconButton(
                 onPressed: () => {
-                  getImage(ImageSource.gallery, context).then((ii) => Navigator.pop(ctx, ii)),
+                  getImage(ImageSource.gallery, context)
+                      .then((ii) => Navigator.pop(ctx, ii)),
                 },
                 icon: Icon(Icons.photo_library),
               )
             ],
           );
-        }
-    );
+        });
   }
 
   ImageItem.fromJson(Map<String, dynamic> json) : super.fromJson(json);
@@ -781,7 +796,8 @@ class ImageItem extends FileMediaItem {
     return _TYPENAME;
   }
 
-  static Future<ImageItem> getImage(ImageSource source, BuildContext context) async {
+  static Future<ImageItem> getImage(
+      ImageSource source, BuildContext context) async {
     var image = await ImagePicker.pickImage(source: source);
     if (image != null) {
       return ImageItem(image);
@@ -792,18 +808,13 @@ class ImageItem extends FileMediaItem {
   @override
   Widget getPostPreview(BuildContext context, ValueNotifier notif) {
     return Container(
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Colors.black,
-          width: 1.0
-        ),
-        borderRadius: BorderRadius.circular(5.0)
-      ),
+        decoration: BoxDecoration(
+            border: Border.all(color: Colors.black, width: 1.0),
+            borderRadius: BorderRadius.circular(5.0)),
         child: Padding(
           padding: const EdgeInsets.all(4.0),
           child: Image.file(file, height: 200),
-        )
-    );
+        ));
   }
 
   @override
@@ -814,8 +825,6 @@ class ImageItem extends FileMediaItem {
   @override
   void _onFileDelete() {}
 }
-
-
 
 class NodeInfo extends StatefulWidget {
   final Node node;
@@ -848,37 +857,28 @@ class NodeInfoState extends State<NodeInfo> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text('Node information'),
+          title: Text("Node information"),
         ),
         body: AnimatedBuilder(
-            animation: widget.notif, builder: (ctx, constraints) =>
-            Container(
-                child: SingleChildScrollView(
+            animation: widget.notif,
+            builder: (ctx, constraints) => Container(
+                    child: SingleChildScrollView(
                   padding: EdgeInsets.all(10.0),
                   child: Column(
                       children: <Widget>[
-                        TextField(
-                            decoration: InputDecoration(
-                                hintText: "Enter node name..."
-                            ),
-                            onChanged: (s) =>
-                            {
-                              widget.node.title = clearEnd(s)
-                            },
-                            onEditingComplete: () => {
+                    TextField(
+                        decoration:
+                            InputDecoration(hintText: "Enter node name..."),
+                        onChanged: (s) => {widget.node.title = clearEnd(s)},
+                        onEditingComplete: () => {
                               cTitle.text = clearEnd(cTitle.text),
                               FocusScope.of(context).unfocus()
                             },
-                            controller: cTitle
-                        ),
-                        Divider(
-                          height: 30.0,
-                        )
-                      ]..add(widget.node.getChildrenInfo(context, widget.notif))
-                  ),
-                )
-            )
-        )
-    );
+                        controller: cTitle),
+                    Divider(
+                      height: 30.0,
+                    )
+                  ]..add(widget.node.getChildrenInfo(context, widget.notif))),
+                ))));
   }
 }

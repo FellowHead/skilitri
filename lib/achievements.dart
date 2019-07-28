@@ -58,15 +58,10 @@ class _EditAchievementState extends State<EditAchievement> {
                     keyboardType: TextInputType.multiline,
                     maxLines: null,
                     controller: _comment,
-                    onChanged: (s) => {
-                      widget.achievement.title = clearEnd(s)
-                    },
-                    onEditingComplete: () => {
-                      _comment.text = clearEnd(_comment.text)
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Add a comment..."
-                    ),
+                    onChanged: (s) => {widget.achievement.title = clearEnd(s)},
+                    onEditingComplete: () =>
+                        {_comment.text = clearEnd(_comment.text)},
+                    decoration: InputDecoration(hintText: "Add a comment..."),
                   ),
                   Divider(),
                   buildMediaCol(),
@@ -119,14 +114,17 @@ class _EditAchievementState extends State<EditAchievement> {
             child: Row(
               children: <Widget>[
                 Icon(Icons.link),
-                Text("${widget.achievement.getAscendants().length} (${widget.achievement.numParents}) connections")
+                Text(
+                    "${widget.achievement.getAscendants().length} (${widget.achievement.numParents}) connections")
               ],
             ),
             onPressed: () => {
               AudioItem.maybeShutUp(),
-              Navigator.push(context, MaterialPageRoute(
-                  builder: (ctx) => LinkAchievement(achievement: widget.achievement)
-              ))
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (ctx) =>
+                          LinkAchievement(achievement: widget.achievement)))
             },
           ),
         ],
@@ -144,37 +142,36 @@ class _EditAchievementState extends State<EditAchievement> {
         animation: notif,
         builder: (ctx, child) {
           return Column(
-            children: widget.achievement.copyItems().map((mi) =>
-                Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: GestureDetector(
-                    onLongPressStart: (details) => {
-                      Feedback.forLongPress(context),
-                      showDialog(
-                        context: context,
-                        builder: (ctx) {
-                          return AlertDialog(
-                            title: Text("Media item options"),
-                            actions: <Widget>[
-                              FlatButton.icon(
-                                icon: Icon(Icons.delete_forever),
-                                onPressed: () => {
-                                  mi.delete(notif: notif),
-                                  Navigator.pop(ctx)
-                                },
-                                label: Text("Delete"),
-                              )
-                            ],
-                          );
-                        }
-                      )
-                    },
-                    child: mi.getPostPreview(context, notif)
-                  ),
-                )).toList(),
+            children: widget.achievement
+                .copyItems()
+                .map((mi) => Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: GestureDetector(
+                          onLongPressStart: (details) => {
+                                Feedback.forLongPress(context),
+                                showDialog(
+                                    context: context,
+                                    builder: (ctx) {
+                                      return AlertDialog(
+                                        title: Text("Media item options"),
+                                        actions: <Widget>[
+                                          FlatButton.icon(
+                                            icon: Icon(Icons.delete_forever),
+                                            onPressed: () => {
+                                              mi.delete(notif: notif),
+                                              Navigator.pop(ctx)
+                                            },
+                                            label: Text("Delete"),
+                                          )
+                                        ],
+                                      );
+                                    })
+                              },
+                          child: mi.getPostPreview(context, notif)),
+                    ))
+                .toList(),
           );
-        }
-    );
+        });
   }
 }
 
@@ -204,31 +201,23 @@ class _LinkAchievementState extends State<LinkAchievement> {
         title: Text("Select connections"),
       ),
       body: SkilitriState.instance.buildViewport(
-              (n) =>
-          {
-            if (widget.achievement.hasParent(n)) {
-              n.unlinkChild(widget.achievement)
-            } else
-              {
-                n.addChild(widget.achievement)
+          (n) => {
+                if (widget.achievement.hasParent(n))
+                  {n.unlinkChild(widget.achievement)}
+                else
+                  {n.addChild(widget.achievement)},
+                computeAsc(),
+                notifs[0].value++
               },
-            computeAsc(),
-            notifs[0].value++
-          },
           null,
-          getSelectionType,
-              (n, child) {
-            if (asc.contains(child)) {
-              return Colors.white;
-            }
-            return Colors.black38;
-          },
-          arr: notifs
-      ),
+          getSelectionType, (n, child) {
+        if (asc.contains(child)) {
+          return Colors.white;
+        }
+        return Colors.black38;
+      }, arr: notifs),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => {
-          Navigator.pop(context, true)
-        },
+        onPressed: () => {Navigator.pop(context, true)},
         child: Icon(Icons.done),
       ),
     );

@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
@@ -8,12 +8,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:skilitri/theme.dart';
-//import 'package:fluttery_audio/fluttery_audio.dart';
-import 'package:skilitri/tree.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:matrix_gesture_detector/matrix_gesture_detector.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:skilitri/theme.dart';
+import 'package:skilitri/tree.dart';
 
 String clearEnd(String input) {
   if (input[input.length - 1] == " ") {
@@ -28,13 +27,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'skilitri',
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        //primaryColor: Colors.amber[100],
-      ),
-      home: Skilitri()
-    );
+        title: "skilitri",
+        theme: ThemeData(
+          primarySwatch: Colors.indigo,
+        ),
+        home: Skilitri());
   }
 }
 
@@ -71,36 +68,6 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
   }
 
   void resetTree() async {
-//    tree = SkillTree(
-//        {
-//          Node(
-//              title: "Node",
-//              position: Offset(0, 0),
-//              body: DemoBody(),
-//              children: {
-//                Node(
-//                    title: "Score Node #1",
-//                    position: Offset(0, -100),
-//                    body: ScoreBody(score: 100),
-//                    children: {
-//                      Node(
-//                        title: "Score Node #2",
-//                        position: Offset(-300, -200),
-//                        body: ScoreBody(score: 5),
-//                      ),
-//                      Node(
-//                        title: "Score Node #3",
-//                        position: Offset(300, -200),
-//                        body: ScoreBody(score: 63),
-//                      )
-//                    }
-//                )
-//              }
-//          )
-//        }
-//    );
-
-
     if (!await _read()) {
       tree = SkillTree()
         ..addSkillNode("Node", Offset(0, 0))
@@ -108,7 +75,8 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
     }
   }
 
-  Widget buildNode(VisibleNode n, Function onTap, Function onLongPress, SelectionType sel) {
+  Widget buildNode(
+      VisibleNode n, Function onTap, Function onLongPress, SelectionType sel) {
     Matrix4 ma = matrix.clone();
     ma.translate(n.position.dx, -n.position.dy);
 
@@ -126,23 +94,16 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
 
                   Matrix4 change = tm;
                   //print(MatrixGestureDetector.decomposeToValues(matrix));
-                  double sc = MatrixGestureDetector
-                      .decomposeToValues(matrix)
-                      .scale;
+                  double sc =
+                      MatrixGestureDetector.decomposeToValues(matrix).scale;
                   //change.multiplyTranspose(matrix);
-                  n.position += Offset(change
-                      .getTranslation()
-                      .x / sc, -change
-                      .getTranslation()
-                      .y / sc);
+                  n.position += Offset(change.getTranslation().x / sc,
+                      -change.getTranslation().y / sc);
                   notifier.value++;
                 },
                 child: Center(
                   child: n.render(context, notifier, sel),
-                )
-            )
-        )
-    );
+                ))));
   }
 
   SelectionType getSelectionType(Node n) {
@@ -158,59 +119,59 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
     Matrix4 m = matrix.clone();
     var zoom = MatrixGestureDetector.decomposeToValues(m).scale;
     m.translate(-sc.dx / zoom, (150 - sc.dy) / zoom, 0);
-    return Offset(-m.getTranslation().x / zoom - 180, m.getTranslation().y / zoom + 220);
+    return Offset(
+        -m.getTranslation().x / zoom - 180, m.getTranslation().y / zoom + 220);
   }
 
   void select(Node n, bool deselectOthers) {
-    setState(() =>
-    {
-      if (deselectOthers) {
-        selection = {}
-      },
-      selection.add(n),
-      inSelectionMode = true,
-      active = n
-    });
+    setState(() => {
+          if (deselectOthers) {selection = {}},
+          selection.add(n),
+          inSelectionMode = true,
+          active = n
+        });
   }
 
   Future<bool> onAddNode(Offset position, {Node parent, Node child}) async {
     var controller = TextEditingController();
 
     dynamic res = await showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: Text("Create new node"),
-          content: TextField(
-            decoration: InputDecoration(
-              hintText: "Enter node name..."
-            ),
-            controller: controller,
-            onEditingComplete: () => {
-              controller.text = clearEnd(controller.text),
-              FocusScope.of(ctx).unfocus()
-            },
-            autofocus: true,
-          ),
-          actions: <Widget>[
-            FlatButton(
-              child: Text("OK"),
-              onPressed: () => {
-                addNode(clearEnd(controller.text), position, parent: parent, child: child),
-                Navigator.pop(ctx, true)
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text("Create new node"),
+            content: TextField(
+              decoration: InputDecoration(hintText: "Enter node name..."),
+              controller: controller,
+              onEditingComplete: () => {
+                controller.text = clearEnd(controller.text),
+                FocusScope.of(ctx).unfocus()
               },
-            )
-          ],
-        );
-      }
-    );
+              autofocus: true,
+            ),
+            actions: <Widget>[
+              FlatButton(
+                child: Text("OK"),
+                onPressed: () => {
+                  addNode(clearEnd(controller.text), position,
+                      parent: parent, child: child),
+                  Navigator.pop(ctx, true)
+                },
+              )
+            ],
+          );
+        });
     return res != null;
   }
 
   void addNode(String title, Offset position, {Node parent, Node child}) {
     Node nNode = tree.addSkillNode(title, position);
-    if (parent != null) { nNode.addParent(parent); }
-    if (child != null) { nNode.addChild(child); }
+    if (parent != null) {
+      nNode.addParent(parent);
+    }
+    if (child != null) {
+      nNode.addChild(child);
+    }
     select(nNode, true);
   }
 
@@ -219,14 +180,12 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
   Future<bool> _read() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      //final file = File('${directory.path}/tree.fwd');
-      //final file = File('${directory.path}/baum.fwd');
-      final file = File('${directory.path}/kerpooch.fwd');
+      //final file = File("${directory.path}/tree.fwd");
+      //final file = File("${directory.path}/baum.fwd");
+      final file = File("${directory.path}/kerpooch.fwd");
       String text = await file.readAsString();
       print(text);
-      setState(() => {
-        tree = SkillTree.fromJson(jsonDecode(text))
-      });
+      setState(() => {tree = SkillTree.fromJson(jsonDecode(text))});
       return true;
     } on FileSystemException {
       print("Can't read file");
@@ -236,11 +195,11 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
 
   void _save() async {
     final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/kerpooch.fwd');
+    final file = File("${directory.path}/kerpooch.fwd");
     final text = jsonEncode(tree.toJson());
     print(text);
     await file.writeAsString(text);
-    print('saved');
+    print("saved");
 
     Fluttertoast.showToast(
       msg: "Saved",
@@ -251,8 +210,13 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
     );
   }
 
-  Widget buildViewport(Function(Node) onTap, Function(Node) onLongPress, SelectionType Function(Node) selectionType,
-      Color Function(Node, Node) lineColor, {void Function() onUpdate, List<ValueNotifier> arr}) {
+  Widget buildViewport(
+      Function(Node) onTap,
+      Function(Node) onLongPress,
+      SelectionType Function(Node) selectionType,
+      Color Function(Node, Node) lineColor,
+      {void Function() onUpdate,
+      List<ValueNotifier> arr}) {
     if (arr != null) {
       arr.clear();
       arr.add(notifier);
@@ -262,31 +226,21 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
     }
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerUp: (lol) =>
-      {
-        onDragStop()
-      },
+      onPointerUp: (lol) => {onDragStop()},
       child: LayoutBuilder(
         builder: (ctx, constraints) {
           return MatrixGestureDetector(
               onMatrixUpdate: (m, tm, sm, rm) {
-                matrix =
-                    MatrixGestureDetector.compose(
-                        matrix, tm, sm, null);
+                matrix = MatrixGestureDetector.compose(matrix, tm, sm, null);
                 notifier.value++;
               },
               child: GestureDetector(
-                onLongPressStart: (details) =>
-                {
+                onLongPressStart: (details) => {
                   Feedback.forLongPress(context),
-                  if (inSelectionMode) {
-                    exitSelectionMode()
-                  } else
-                    {
-                      onAddNode(
-                          screenToView(
-                              context, details.globalPosition))
-                    }
+                  if (inSelectionMode)
+                    {exitSelectionMode()}
+                  else
+                    {onAddNode(screenToView(context, details.globalPosition))}
                 },
                 behavior: HitTestBehavior.opaque,
                 child: Container(
@@ -300,27 +254,27 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
                           return Container(
                               width: double.infinity,
                               height: double.infinity,
-                              child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    buildCanvas(lineColor),
-                                    Stack(
-                                      children: tree.nodes.where((test) => test is VisibleNode).map((n) =>
-                                          buildNode(
-                                              n,
-                                              onTap != null ? () => onTap(n) : () => {},
-                                              onLongPress != null ? () => onLongPress(n) : () => {},
-                                              selectionType != null ? selectionType(n) : () => {})
-                                      ).toList(),
-                                    )
-                                  ]
-                              )
-                          );
-                        }
-                    )
-                ),
-              )
-          );
+                              child: Stack(fit: StackFit.expand, children: [
+                                buildCanvas(lineColor),
+                                Stack(
+                                  children: tree.nodes
+                                      .where((test) => test is VisibleNode)
+                                      .map((n) => buildNode(
+                                          n,
+                                          onTap != null
+                                              ? () => onTap(n)
+                                              : () => {},
+                                          onLongPress != null
+                                              ? () => onLongPress(n)
+                                              : () => {},
+                                          selectionType != null
+                                              ? selectionType(n)
+                                              : () => {}))
+                                      .toList(),
+                                )
+                              ]));
+                        })),
+              ));
         },
       ),
     );
@@ -338,106 +292,90 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
           return Future<bool>.value(false);
         },
         child: Scaffold(
-            appBar: AppBar(
-              title: Text('skilitri'),
-            ),
-            drawer: Drawer(
+          appBar: AppBar(
+            title: Text("skilitri"),
+          ),
+          drawer: Drawer(
               child: ListView(
-                padding: EdgeInsets.zero,
-                children: <Widget>[
-                  DrawerHeader(
-                    child: Text("boi, look at deez achievements", style: lightStyle,),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              DrawerHeader(
+                child: Text(
+                  "boi, look at deez achievements",
+                  style: lightStyle,
+                ),
+                decoration:
+                    BoxDecoration(color: Theme.of(context).primaryColor),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.0),
+                child: FlatButton(
+                    onPressed: () => {tree.addAchievementThroughUser(context)},
+                    child: Text(
+                      "Add achievement",
+                      style: lightStyle,
                     ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: FlatButton(
-                      onPressed: () => {
-                        tree.addAchievementThroughUser(context)
-                      },
-                      child: Text("Add achievement", style: lightStyle,),
-                      shape: StadiumBorder(),
-                        color: Theme.of(context).primaryColor
-                    ),
-                  )
-                ]..addAll(tree.getSortedAchievements().map((a) => a.render(context)).toList()),
+                    shape: StadiumBorder(),
+                    color: Theme.of(context).primaryColor),
               )
-            ),
-            body: Column(
-                children: [
-                  Container(
-                    child: Row(
-                      children: <Widget>[
-                        MaterialButton(
-                          onPressed: () =>
-                          {
-                            resetTree(),
-                            exitSelectionMode(),
-                          },
-                          child: Text('Reset tree'),
-                        ),
-                        IconButton(
-                          onPressed: () =>
-                          {
-                            _save()
-                          },
-                          icon: Icon(
-                              Icons.save
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () =>
-                          {
-                            _read()
-                          },
-                          icon: Icon(
-                              Icons.restore_page
-                          ),
-                        ),
-                      ],
-                    ),
-                    height: 50,
-                  ),
-                  Expanded(
-                    child: buildViewport((n) => {
-                      if (inSelectionMode) {
-                        if (selection.contains(n)) {
-                          if (selection.length == 1) {
-                            exitSelectionMode()
-                          } else
-                            {
-                              selection.remove(n),
-                              if (active == n) {
-                                active = null
-                              }
-                            }
-                        } else
-                          {
-                            select(n, false)
-                          },
-                        setState(() => {})
-                      } else {
-                        n.displayInfo(context)
-                      },
-                      onDragStop()
-                    }, (n) => {
-                      Feedback.forLongPress(context),
-                      select(n, true)
+            ]..addAll(tree
+                .getSortedAchievements()
+                .map((a) => a.render(context))
+                .toList()),
+          )),
+          body: Column(children: [
+            Container(
+              child: Row(
+                children: <Widget>[
+                  MaterialButton(
+                    onPressed: () => {
+                      resetTree(),
+                      exitSelectionMode(),
                     },
-                        getSelectionType,
-                        (n, child) {
-                          return Colors.black38;
-                        }
-                    )
+                    child: Text("Reset tree"),
                   ),
-                ]
+                  IconButton(
+                    onPressed: () => {_save()},
+                    icon: Icon(Icons.save),
+                  ),
+                  IconButton(
+                    onPressed: () => {_read()},
+                    icon: Icon(Icons.restore_page),
+                  ),
+                ],
+              ),
+              height: 50,
             ),
+            Expanded(
+                child: buildViewport(
+                    (n) => {
+                          if (inSelectionMode)
+                            {
+                              if (selection.contains(n))
+                                {
+                                  if (selection.length == 1)
+                                    {exitSelectionMode()}
+                                  else
+                                    {
+                                      selection.remove(n),
+                                      if (active == n) {active = null}
+                                    }
+                                }
+                              else
+                                {select(n, false)},
+                              setState(() => {})
+                            }
+                          else
+                            {n.displayInfo(context)},
+                          onDragStop()
+                        },
+                    (n) => {Feedback.forLongPress(context), select(n, true)},
+                    getSelectionType, (n, child) {
+              return Colors.black38;
+            })),
+          ]),
           floatingActionButton: FloatingActionButton(
-            onPressed: () => {
-              tree.addAchievementThroughUser(context)
-            },
+            onPressed: () => {tree.addAchievementThroughUser(context)},
             tooltip: "Add achievement",
             child: Icon(Icons.library_add),
           ),
@@ -445,121 +383,113 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
             duration: Duration(milliseconds: 300),
             curve: Curves.decelerate,
             decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                      blurRadius: 10
-                  )
-                ]
-            ),
+                color: Colors.white, boxShadow: [BoxShadow(blurRadius: 10)]),
             child: Row(
               children: <Widget>[
                 IconButton(
-                  onPressed: () =>
-                  {
-                    setState(() =>
-                    {
-                      for (Node n in selection) {
-                        n.remove(true)
-                      },
-                      exitSelectionMode()
-                    })
+                  onPressed: () => {
+                    setState(() => {
+                          for (Node n in selection) {n.remove(true)},
+                          exitSelectionMode()
+                        })
                   },
-                  icon: Icon(
-                      Icons.delete
-                  ),
+                  icon: Icon(Icons.delete),
                 ),
                 IconButton(
-                  onPressed: (selection.length == 1 && selection.first.numParents == 1) ||
-                      (selection.length == 2 &&
-                          (selection.last.hasParent(selection.first)
-                              || selection.first.hasParent(selection.last))) ? () =>
-                  {
-                    setState(() =>
-                    {
-                      if (selection.length == 1) {
-                        insertNode(selection.first.getFirstParent(), selection.first)
-                      } else if (selection.last.hasParent(selection.first)) {
-                        insertNode(selection.first, selection.last)
-                      } else {
-                        insertNode(selection.last, selection.first)
-                      },
-                    })
-                  } : null,
-                  icon: Icon(
-                      Icons.add
-                  ),
-                ),
-                IconButton(
-                  onPressed: selection.length != 1 ? () =>
-                  {
-                    setState(() =>
-                    {
-                      if (active != null) {
-                        for (Node n in selection) {
-                          if (n != active) {
-                            if (!active.getAscendants().contains(n)) {
-                              active.addChild(n),
-                            } else
-                              {
-                                print('well bois we did it, overflow is no more')
-                              }
+                  onPressed: (selection.length == 1 &&
+                              selection.first.numParents == 1) ||
+                          (selection.length == 2 &&
+                              (selection.last.hasParent(selection.first) ||
+                                  selection.first.hasParent(selection.last)))
+                      ? () => {
+                            setState(() => {
+                                  if (selection.length == 1)
+                                    {
+                                      insertNode(
+                                          selection.first.getFirstParent(),
+                                          selection.first)
+                                    }
+                                  else if (selection.last
+                                      .hasParent(selection.first))
+                                    {
+                                      insertNode(
+                                          selection.first, selection.last)
+                                    }
+                                  else
+                                    {
+                                      insertNode(
+                                          selection.last, selection.first)
+                                    },
+                                })
                           }
-                        },
-                      },
-                    })
-                  } : null,
-                  icon: Icon(
-                      Icons.link
-                  ),
+                      : null,
+                  icon: Icon(Icons.add),
                 ),
                 IconButton(
-                  onPressed: () =>
-                  {
-                    setState(() =>
-                    {
-                      for (Node n in selection) {
-                        for (Node c in n.children.toSet()) {
-                          if (selection.contains(c)) {
-                            c.unlinkParent(n)
+                  onPressed: selection.length != 1
+                      ? () => {
+                            setState(() => {
+                                  if (active != null)
+                                    {
+                                      for (Node n in selection)
+                                        {
+                                          if (n != active)
+                                            {
+                                              if (!active
+                                                  .getAscendants()
+                                                  .contains(n))
+                                                {
+                                                  active.addChild(n),
+                                                }
+                                              else
+                                                {
+                                                  print(
+                                                      "well bois we did it, overflow is no more")
+                                                }
+                                            }
+                                        },
+                                    },
+                                })
                           }
-                        }
-                      },
-                    })
+                      : null,
+                  icon: Icon(Icons.link),
+                ),
+                IconButton(
+                  onPressed: () => {
+                    setState(() => {
+                          for (Node n in selection)
+                            {
+                              for (Node c in n.children.toSet())
+                                {
+                                  if (selection.contains(c)) {c.unlinkParent(n)}
+                                }
+                            },
+                        })
                   },
-                  icon: Icon(
-                      Icons.link_off
-                  ),
+                  icon: Icon(Icons.link_off),
                 ),
                 IconButton(
-                  onPressed: selection.length == 1 ? () =>
-                  {
-                    setState(() =>
-                    {
-                      selection.first.displayInfo(context)
-                    })
-                  } : null,
-                  icon: Icon(
-                      Icons.info_outline
-                  ),
+                  onPressed: selection.length == 1
+                      ? () => {
+                            setState(
+                                () => {selection.first.displayInfo(context)})
+                          }
+                      : null,
+                  icon: Icon(Icons.info_outline),
                 ),
               ],
             ),
             height: inSelectionMode ? 50 : 0,
           ),
-        )
-    );
+        ));
   }
 
   void insertNode(VisibleNode parent, VisibleNode child) {
     onAddNode((parent.position + child.position) / 2,
-        parent: parent,
-        child: child
-    ).then((v) => {
-      if (v) {
-        child.unlinkParent(parent)
-      }
-    });
+            parent: parent, child: child)
+        .then((v) => {
+              if (v) {child.unlinkParent(parent)}
+            });
   }
 
   void onDragStop() {
@@ -587,20 +517,15 @@ class SkilitriState extends State<Skilitri> with WidgetsBindingObserver {
                 child: Container(
                     width: 1,
                     height: 250,
-                    decoration: BoxDecoration(color: Colors.white)
-                )
-            ),
+                    decoration: BoxDecoration(color: Colors.white))),
             // horizontal line
             Center(
                 child: Container(
                     width: 250,
                     height: 1,
-                    decoration: BoxDecoration(color: Colors.white)
-                )
-            ),
+                    decoration: BoxDecoration(color: Colors.white))),
           ],
-        )
-    );
+        ));
   }
 
   Widget buildCanvas(Color Function(Node, Node) lineColor) {
@@ -636,6 +561,7 @@ class ShapesPainter extends CustomPainter {
       }
     }
   }
+
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
